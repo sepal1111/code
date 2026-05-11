@@ -1,0 +1,1687 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>找到寶藏吧！邏輯遊戲</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dom-to-image/2.6.0/dom-to-image.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap');
+
+        body {
+            font-family: 'Noto Sans TC', Arial, sans-serif;
+            background-color: #f0f9ff;
+            touch-action: manipulation;
+            overflow-x: hidden;
+        }
+
+        .grid-cell {
+            aspect-ratio: 1 / 1;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        .ocean-bg {
+            background-color: #0ea5e9;
+            background-image: radial-gradient(#38bdf8 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        /* 地圖固定物件層 */
+        .cell-object {
+            position: absolute;
+            z-index: 10;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* 船隻容器 - 最上層 */
+        .ship-wrapper {
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 50;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* 箭頭定位在格子內部周邊 */
+        .direction-arrow-container {
+            position: absolute;
+            z-index: 60;
+            transition: all 0.3s ease-out;
+            pointer-events: none;
+        }
+
+        .direction-arrow {
+            width: 0;
+            height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-bottom: 10px solid #fbbf24;
+            filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.3));
+            animation: bounce 0.8s infinite alternate;
+        }
+
+        @keyframes bounce {
+            from {
+                transform: scale(1);
+                opacity: 0.8;
+            }
+
+            to {
+                transform: scale(1.3);
+                opacity: 1;
+            }
+        }
+
+        .arrow-pos-0 {
+            top: 4px;
+            left: 50%;
+            transform: translateX(-50%) rotate(0deg);
+        }
+
+        .arrow-pos-1 {
+            right: 4px;
+            top: 50%;
+            transform: translateY(-50%) rotate(90deg);
+        }
+
+        .arrow-pos-2 {
+            bottom: 4px;
+            left: 50%;
+            transform: translateX(-50%) rotate(180deg);
+        }
+
+        .arrow-pos-3 {
+            left: 4px;
+            top: 50%;
+            transform: translateY(-50%) rotate(270deg);
+        }
+
+        .card-active:active:not(:disabled) {
+            transform: scale(0.95);
+        }
+
+        .water-ripple {
+            position: absolute;
+            width: 70%;
+            height: 70%;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            animation: ripple 2s infinite;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        @keyframes ripple {
+            0% {
+                transform: scale(0.5);
+                opacity: 1;
+            }
+
+            100% {
+                transform: scale(1.4);
+                opacity: 0;
+            }
+        }
+
+        .repeat-badge {
+            background-color: white;
+            color: #ea580c;
+            border-radius: 4px;
+            padding: 1px 4px;
+            font-size: 0.7rem;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        .lvl-locked {
+            filter: grayscale(1);
+            opacity: 0.5;
+            cursor: not-allowed !important;
+        }
+
+        .ship-option {
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 4px solid transparent;
+        }
+
+        .ship-option.selected {
+            border-color: #0ea5e9;
+            background-color: #e0f2fe;
+            transform: scale(1.1);
+        }
+
+        #program-list {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+            align-content: start;
+        }
+
+        .command-card {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.6rem;
+            border-radius: 0.75rem;
+            color: white;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            animation: slideIn 0.3s ease-out;
+            transition: all 0.3s;
+        }
+
+        .command-card.executing {
+            background-color: #fbbf24 !important;
+            color: #1e3a8a;
+            transform: scale(1.05);
+            box-shadow: 0 0 15px #fbbf24;
+            z-index: 10;
+        }
+
+        .step-number {
+            background-color: rgba(0, 0, 0, 0.25);
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            flex-shrink: 0;
+            margin-right: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+
+
+        input[type=range] {
+            height: 6px;
+            -webkit-appearance: none;
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 18px;
+            width: 18px;
+            border-radius: 50%;
+            background: #0ea5e9;
+            cursor: pointer;
+        }
+
+        .active-tool {
+            border-color: #a855f7 !important;
+            box-shadow: 0 0 10px rgba(168, 85, 247, 0.4);
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+
+<body class="min-h-screen flex flex-col items-center p-4">
+
+    <!-- 模式選擇介面 -->
+    <div id="mode-screen"
+        class="fixed inset-0 bg-sky-900 z-[110] flex flex-col items-center justify-center p-6 text-white text-center">
+        <h1 class="text-5xl font-bold mb-4 drop-shadow-lg">找到寶藏吧！</h1>
+        <p class="text-sky-300 mb-12 text-lg">選擇你的冒險模式</p>
+
+        <div class="flex flex-col sm:flex-row gap-6 w-full max-w-2xl">
+            <button onclick="selectMode('challenge')"
+                class="flex-1 bg-gradient-to-br from-amber-400 to-orange-500 p-8 rounded-3xl shadow-2xl hover:scale-105 transition active:scale-95 group text-left relative overflow-hidden">
+                <div class="relative z-10">
+                    <span class="text-5xl mb-4 block">🏆</span>
+                    <h2 class="text-2xl font-bold mb-2">內建闖關</h2>
+                    <p class="text-white/80 text-sm">挑戰程式碼內建的 5 個精選關卡，學習邏輯基礎。</p>
+                </div>
+                <div class="absolute -right-4 -bottom-4 text-8xl opacity-10 group-hover:rotate-12 transition">🧭</div>
+            </button>
+
+            <button onclick="selectMode('custom')"
+                class="flex-1 bg-gradient-to-br from-indigo-500 to-purple-600 p-8 rounded-3xl shadow-2xl hover:scale-105 transition active:scale-95 group text-left relative overflow-hidden">
+                <div class="relative z-10">
+                    <span class="text-5xl mb-4 block">🛠️</span>
+                    <h2 class="text-2xl font-bold mb-2">自訂地圖</h2>
+                    <p class="text-white/80 text-sm">編輯自己的地圖、匯入 JSON 或挑戰自創關卡。</p>
+                </div>
+                <div class="absolute -right-4 -bottom-4 text-8xl opacity-10 group-hover:rotate-12 transition">🧱</div>
+            </button>
+        </div>
+    </div>
+
+    <!-- 初始選船介面 (模式選擇後顯示) -->
+    <div id="selection-screen"
+        class="fixed inset-0 bg-sky-900 z-[100] flex flex-col items-center justify-center p-6 text-white text-center">
+        <h1 class="text-4xl font-bold mb-4">找到寶藏吧！邏輯遊戲</h1>
+        <p class="text-sky-200 mb-8 font-medium">背景音樂取自：<a href="https://pixabay.com/" target="_blank"
+                class="underline hover:text-sky-100">https://pixabay.com/</a></p>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
+            <div onclick="selectShip('🚢')"
+                class="ship-option bg-white/10 p-6 rounded-3xl text-6xl selected cursor-pointer hover:bg-white/20 transition"
+                id="opt-0">🚢</div>
+            <div onclick="selectShip('⛵')"
+                class="ship-option bg-white/10 p-6 rounded-3xl text-6xl cursor-pointer hover:bg-white/20 transition"
+                id="opt-1">⛵</div>
+            <div onclick="selectShip('🛥️')"
+                class="ship-option bg-white/10 p-6 rounded-3xl text-6xl cursor-pointer hover:bg-white/20 transition"
+                id="opt-2">🛥️</div>
+            <div onclick="selectShip('🛶')"
+                class="ship-option bg-white/10 p-6 rounded-3xl text-6xl cursor-pointer hover:bg-white/20 transition"
+                id="opt-3">🛶</div>
+        </div>
+        <div class="flex gap-4">
+            <button onclick="backToMode()"
+                class="bg-white/10 text-white px-8 py-4 rounded-full text-xl font-bold hover:bg-white/20 transition">
+                ⬅️ 返回
+            </button>
+            <button onclick="startGame()"
+                class="bg-yellow-400 text-sky-900 px-12 py-4 rounded-full text-2xl font-bold shadow-2xl hover:bg-yellow-300 transition active:scale-95">
+                🎮 啟航冒險！
+            </button>
+        </div>
+    </div>
+
+    <div id="game-container" class="w-full flex flex-col items-center">
+        <!-- 頁首面板 -->
+        <header class="text-center mb-6 w-full max-w-4xl">
+            <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4 px-2">
+                <h1 class="text-2xl font-bold text-sky-800">找到寶藏吧！邏輯遊戲</h1>
+                <div class="flex items-center gap-3">
+                    <button onclick="toggleEditor()"
+                        class="bg-purple-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-sm hover:bg-purple-700 transition">🛠️
+                        地圖編輯</button>
+                    <div id="master-badge"
+                        class="hidden bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-3 py-1 rounded-full text-[10px] font-bold shadow-sm animate-bounce">
+                        👑 傳奇航海家</div>
+                    <div
+                        class="flex items-center gap-3 bg-white/90 backdrop-blur-sm p-2 rounded-2xl shadow-sm border border-sky-100">
+                        <button onclick="toggleMusic()" id="music-btn"
+                            class="text-xl transition hover:scale-110">🎵</button>
+                        <div class="flex flex-col items-start">
+                            <span class="text-[10px] text-gray-400 font-bold ml-1">音樂音量</span>
+                            <input type="range" id="volume-slider" min="0" max="1" step="0.1" value="0.4"
+                                oninput="adjustVolume(this.value)" class="w-16 sm:w-24">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 關卡導航 -->
+            <div id="level-nav" class="flex flex-wrap items-center justify-center gap-2 px-2">
+                <button onclick="switchLevel(0)" id="lvl-btn-0"
+                    class="lvl-btn px-3 py-1 rounded-full text-xs font-bold transition">第一關</button>
+                <button onclick="switchLevel(1)" id="lvl-btn-1"
+                    class="lvl-btn lvl-locked px-3 py-1 rounded-full text-xs font-bold transition">第二關 🔒</button>
+                <button onclick="switchLevel(2)" id="lvl-btn-2"
+                    class="lvl-btn lvl-locked px-3 py-1 rounded-full text-xs font-bold transition">第三關 🔒</button>
+                <button onclick="switchLevel(3)" id="lvl-btn-3"
+                    class="lvl-btn lvl-locked px-3 py-1 rounded-full text-xs font-bold transition">第四關 🔒</button>
+                <button onclick="switchLevel(4)" id="lvl-btn-4"
+                    class="lvl-btn lvl-locked px-3 py-1 rounded-full text-xs font-bold transition">第五關 🔒</button>
+            </div>
+            <p id="level-desc"
+                class="text-sky-600 mt-3 font-bold text-sm bg-white/90 px-5 py-1.5 rounded-full border border-sky-100 shadow-sm inline-block mx-2 whitespace-nowrap w-max">
+                準備冒險...</p>
+            <span id="timer-display"
+                class="hidden text-orange-600 mt-3 font-bold text-sm bg-white/90 px-5 py-1.5 rounded-full border border-orange-100 shadow-sm inline-block mx-2 whitespace-nowrap w-max"
+                style="font-family: monospace, sans-serif;">⏱️ 00:00</span>
+        </header>
+
+        <div class="flex flex-col lg:flex-row gap-8 w-full max-w-6xl">
+            <!-- 遊戲地圖 -->
+            <div class="flex-1 flex flex-col items-center">
+                <div id="game-board"
+                    class="ocean-bg w-full max-w-[500px] aspect-square grid rounded-2xl shadow-2xl overflow-hidden relative border-4 border-sky-900 ring-8 ring-white/50">
+                </div>
+            </div>
+
+            <!-- 程式控制區 -->
+            <div class="flex-1 flex flex-col gap-6">
+                <div class="bg-white/90 backdrop-blur p-4 rounded-2xl shadow-xl border border-white">
+                    <h2 class="text-lg font-bold text-gray-700 mb-3 border-b pb-2 flex items-center gap-2">
+                        <span>📜 指令卡片</span>
+                    </h2>
+                    <div class="grid grid-cols-4 gap-2">
+                        <button id="btn-forward" onclick="addCommand('forward')"
+                            class="card-active flex flex-col items-center p-2 bg-blue-50 border-2 border-blue-200 rounded-xl text-blue-700 font-bold disabled:opacity-40">
+                            <span class="text-xl">⬆️</span>
+                            <span id="limit-forward" class="text-[9px] mt-1 bg-blue-200 px-1.5 rounded-full">∞</span>
+                        </button>
+                        <button id="btn-backward" onclick="addCommand('backward')"
+                            class="card-active flex flex-col items-center p-2 bg-blue-50 border-2 border-blue-200 rounded-xl text-blue-700 font-bold disabled:opacity-40">
+                            <span class="text-xl">⬇️</span>
+                            <span id="limit-backward" class="text-[9px] mt-1 bg-blue-200 px-1.5 rounded-full">∞</span>
+                        </button>
+                        <button id="btn-left" onclick="addCommand('left')"
+                            class="card-active flex flex-col items-center p-2 bg-indigo-50 border-2 border-indigo-200 rounded-xl text-indigo-700 font-bold disabled:opacity-40">
+                            <span class="text-xl">↪️</span>
+                            <span id="limit-left" class="text-[9px] mt-1 bg-indigo-200 px-1.5 rounded-full">∞</span>
+                        </button>
+                        <button id="btn-right" onclick="addCommand('right')"
+                            class="card-active flex flex-col items-center p-2 bg-indigo-50 border-2 border-indigo-200 rounded-xl text-indigo-700 font-bold disabled:opacity-40">
+                            <span class="text-xl">↩️</span>
+                            <span id="limit-right" class="text-[9px] mt-1 bg-indigo-200 px-1.5 rounded-full">∞</span>
+                        </button>
+                        <button id="btn-bomb" onclick="addCommand('bomb')"
+                            class="card-active flex flex-col items-center p-2 bg-red-50 border-2 border-red-200 rounded-xl text-red-700 font-bold disabled:opacity-40">
+                            <span class="text-xl">💣</span>
+                            <span id="limit-bomb" class="text-[9px] mt-1 bg-red-200 px-1.5 rounded-full">∞</span>
+                        </button>
+                    </div>
+
+                    <div id="repeat-section" class="hidden">
+                        <h2 class="text-lg font-bold text-gray-700 mt-4 mb-3 border-b pb-2 flex items-center gap-2">
+                            <span>🔄 重複卡片</span>
+                        </h2>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="flex flex-col items-center">
+                                <button id="btn-x2" onclick="applyRepeat(2)"
+                                    class="card-active flex items-center justify-center gap-2 p-2 bg-orange-50 border-2 border-orange-200 rounded-xl text-orange-700 font-bold transition disabled:opacity-40 w-full">
+                                    <span class="text-lg">🔁</span><span class="text-xs">x2</span>
+                                </button>
+                                <span id="limit-x2" class="text-[8px] text-orange-400 font-bold mt-1">∞</span>
+                            </div>
+                            <div class="flex flex-col items-center">
+                                <button id="btn-x3" onclick="applyRepeat(3)"
+                                    class="card-active flex items-center justify-center gap-2 p-2 bg-orange-50 border-2 border-orange-200 rounded-xl text-orange-700 font-bold transition disabled:opacity-40 w-full">
+                                    <span class="text-lg">🔁</span><span class="text-xs">x3</span>
+                                </button>
+                                <span id="limit-x3" class="text-[8px] text-orange-400 font-bold mt-1">∞</span>
+                            </div>
+                            <div class="flex flex-col items-center">
+                                <button id="btn-x5" onclick="applyRepeat(5)"
+                                    class="card-active flex items-center justify-center gap-2 p-2 bg-orange-50 border-2 border-orange-200 rounded-xl text-orange-700 font-bold transition disabled:opacity-40 w-full">
+                                    <span class="text-lg">🔁</span><span class="text-xs">x5</span>
+                                </button>
+                                <span id="limit-x5" class="text-[8px] text-orange-400 font-bold mt-1">∞</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 程式序列 -->
+                <div
+                    class="bg-white/90 backdrop-blur p-4 rounded-2xl shadow-xl flex-1 flex flex-col min-h-[380px] border border-white">
+                    <div class="flex justify-between items-center mb-3">
+                        <h2 class="text-lg font-bold text-gray-700">💾 程式序列</h2>
+                        <div class="flex gap-2">
+                            <button onclick="popCommand()"
+                                class="text-xs text-amber-600 px-3 py-1 bg-amber-50 rounded-lg border border-amber-200 transition hover:bg-amber-100 whitespace-nowrap w-max font-bold">復原</button>
+                            <button onclick="clearProgram()"
+                                class="text-xs text-red-500 px-3 py-1 bg-red-50 rounded-lg border border-red-200 transition hover:bg-red-100 whitespace-nowrap w-max font-bold">清除全部</button>
+                        </div>
+                    </div>
+                    <div id="program-list"
+                        class="flex-1 p-3 bg-gray-50/50 rounded-xl border-2 border-dashed border-gray-200">
+                    </div>
+                    <button id="run-btn" onclick="runProgram()"
+                        class="mt-4 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-2xl shadow-lg transition active:scale-95 text-lg">
+                        🚀 開始航行
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 編輯器模式視圖 (全螢幕) -->
+    <div id="editor-view" class="hidden fixed inset-0 bg-slate-900 z-[100] flex flex-col font-sans overflow-hidden">
+        <!-- 編輯器頂部欄 -->
+        <div class="bg-slate-800 border-b border-slate-700 p-4 flex justify-between items-center shrink-0">
+            <div class="flex items-center gap-4">
+                <button onclick="exitEditor()" class="text-white hover:text-sky-400 transition flex items-center gap-2">
+                    <span class="text-xl">⬅️</span> <span class="font-bold">返回遊戲</span>
+                </button>
+                <div class="h-6 w-px bg-slate-600"></div>
+                <h2 class="text-xl font-bold text-white flex items-center gap-2">🛠️ 關卡編輯器</h2>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="exportAllLevels()"
+                    class="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-blue-700 transition">📤
+                    匯出資料包</button>
+                <button onclick="importAllLevels()"
+                    class="bg-orange-600 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-orange-700 transition">📥
+                    匯入覆蓋</button>
+            </div>
+        </div>
+
+        <div class="flex-1 flex overflow-hidden">
+            <!-- 左側工具欄 -->
+            <div
+                class="w-20 bg-slate-800 border-r border-slate-700 flex flex-col items-center py-4 gap-4 overflow-y-auto shrink-0 scrollbar-hide">
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">工具</p>
+                <div id="editor-tools" class="flex flex-col gap-3">
+                    <button onclick="setEditTool('start')"
+                        class="edit-tool w-12 h-12 flex flex-col items-center justify-center rounded-xl bg-slate-700 border-2 border-transparent hover:bg-slate-600 transition active-tool"
+                        data-tool="start" title="起點"><span class="text-xl">🚢</span></button>
+                    <button onclick="setEditTool('end')"
+                        class="edit-tool w-12 h-12 flex flex-col items-center justify-center rounded-xl bg-slate-700 border-2 border-transparent hover:bg-slate-600 transition"
+                        data-tool="end" title="終點"><span class="text-xl">💰</span></button>
+                    <button onclick="setEditTool('obstacle')"
+                        class="edit-tool w-12 h-12 flex flex-col items-center justify-center rounded-xl bg-slate-700 border-2 border-transparent hover:bg-slate-600 transition"
+                        data-tool="obstacle" title="礁石"><span class="text-xl">🪨</span></button>
+                    <button onclick="setEditTool('driftwood')"
+                        class="edit-tool w-12 h-12 flex flex-col items-center justify-center rounded-xl bg-slate-700 border-2 border-transparent hover:bg-slate-600 transition"
+                        data-tool="driftwood" title="浮木"><span class="text-xl">🪵</span></button>
+                    <button onclick="setEditTool('key')"
+                        class="edit-tool w-12 h-12 flex flex-col items-center justify-center rounded-xl bg-slate-700 border-2 border-transparent hover:bg-slate-600 transition"
+                        data-tool="key" title="鑰匙"><span class="text-xl">🔑</span></button>
+                    <button onclick="setEditTool('door')"
+                        class="edit-tool w-12 h-12 flex flex-col items-center justify-center rounded-xl bg-slate-700 border-2 border-transparent hover:bg-slate-600 transition"
+                        data-tool="door" title="門"><span class="text-xl">🚪</span></button>
+                    <button onclick="setEditTool('pirate')"
+                        class="edit-tool w-12 h-12 flex flex-col items-center justify-center rounded-xl bg-slate-700 border-2 border-transparent hover:bg-slate-600 transition"
+                        data-tool="pirate" title="海盜"><span class="text-xl">🏴‍☠️</span></button>
+                    <button onclick="setEditTool('portal')"
+                        class="edit-tool w-12 h-12 flex flex-col items-center justify-center rounded-xl bg-slate-700 border-2 border-transparent hover:bg-slate-600 transition"
+                        data-tool="portal" title="傳送門"><span class="text-xl">🌀</span></button>
+                    <button onclick="setEditTool('empty')"
+                        class="edit-tool w-12 h-12 flex flex-col items-center justify-center rounded-xl bg-slate-700 border-2 border-transparent hover:bg-slate-600 transition"
+                        data-tool="empty" title="橡皮擦"><span class="text-xl">🧹</span></button>
+                </div>
+            </div>
+
+            <!-- 中間畫布區 -->
+            <div class="flex-1 bg-slate-900 p-8 flex items-center justify-center overflow-auto">
+                <div id="editor-board-container"
+                    class="relative bg-slate-800/50 p-4 rounded-3xl border-4 border-slate-700 shadow-2xl">
+                    <div id="editor-board"
+                        class="ocean-bg grid aspect-square w-[450px] rounded-xl shadow-inner overflow-hidden">
+                        <!-- 編輯器網格動態產生 -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右側設定欄 -->
+            <div class="w-80 bg-slate-800 border-l border-slate-700 flex flex-col p-4 gap-6 overflow-y-auto shrink-0">
+                <section>
+                    <h3 class="text-sky-400 text-xs font-bold uppercase tracking-wider mb-3">⚙️ 基礎設定</h3>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="text-[10px] text-slate-400 font-bold mb-1 block">關卡名稱</label>
+                            <input type="text" id="edit-level-name"
+                                class="w-full bg-slate-700 border border-slate-600 text-white p-2 rounded-lg text-sm focus:ring-2 focus:ring-sky-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="text-[10px] text-slate-400 font-bold mb-1 block">地圖大小 (NxN)</label>
+                            <div class="flex items-center gap-2">
+                                <input type="range" id="edit-grid-size" min="5" max="15" step="1"
+                                    class="flex-1 accent-sky-500">
+                                <span id="grid-size-display" class="text-white font-mono text-sm w-8">9</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="text-[10px] text-slate-400 font-bold mb-1 block">關卡描述</label>
+                            <textarea id="edit-level-desc"
+                                class="w-full bg-slate-700 border border-slate-600 text-white p-2 rounded-lg text-xs h-16 resize-none outline-none"></textarea>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h3 class="text-sky-400 text-xs font-bold uppercase tracking-wider mb-3">🧩 指令限制 (數量)</h3>
+                    <div id="limit-settings-container" class="grid grid-cols-2 gap-2">
+                        <!-- 動態產生 -->
+                    </div>
+                </section>
+
+                <section id="pirate-settings" class="hidden bg-red-900/20 border border-red-900/50 p-3 rounded-xl">
+                    <h3 class="text-red-400 text-[10px] font-bold uppercase tracking-wider mb-2">🏴‍☠️ 海盜路徑設定</h3>
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] text-red-200">移動軸</span>
+                            <select id="pirate-axis" class="bg-slate-700 text-white text-[10px] rounded px-1">
+                                <option value="x">水平 (X)</option>
+                                <option value="y">垂直 (Y)</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] text-red-200">巡邏範圍</span>
+                            <div class="flex items-center gap-1">
+                                <input type="number" id="pirate-range-min"
+                                    class="w-8 bg-slate-700 text-white text-[10px] rounded px-1" value="0">
+                                <span class="text-slate-400">~</span>
+                                <input type="number" id="pirate-range-max"
+                                    class="w-8 bg-slate-700 text-white text-[10px] rounded px-1" value="8">
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <div class="mt-auto pt-4 border-t border-slate-700">
+                    <button onclick="saveCurrentLevel()"
+                        class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl shadow-lg transition active:scale-95 mb-2">💾
+                        儲存目前修改</button>
+                    <button onclick="addNewLevel()"
+                        class="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 rounded-xl transition border border-slate-600 active:scale-95">➕
+                        另存為新關卡</button>
+                </div>
+
+                <section class="mt-4">
+                    <h3 class="text-purple-400 text-xs font-bold uppercase tracking-wider mb-3">🗂️ 關卡清單</h3>
+                    <div id="full-level-list" class="space-y-1 max-h-40 overflow-y-auto pr-1">
+                        <!-- 所有關卡 -->
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <!-- 訊息視窗 -->
+    <div id="modal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-[110] p-4">
+        <div class="bg-white p-8 rounded-3xl max-w-sm w-full text-center shadow-2xl border-t-8 border-sky-500">
+            <div id="modal-icon" class="text-7xl mb-4">🏆</div>
+            <h2 id="modal-title" class="text-2xl font-bold mb-2 text-gray-800">任務達成！</h2>
+            <p id="modal-desc" class="text-gray-600 mb-8">成功的抵達了終點。</p>
+            <button onclick="manualCapture()"
+                class="w-full bg-amber-500 text-white py-3 rounded-xl font-bold hover:bg-amber-600 transition mb-3 flex items-center justify-center gap-2">
+                <span>📷</span> 擷取過關畫面
+            </button>
+            <button id="modal-btn" onclick="closeModal()"
+                class="w-full bg-sky-600 text-white py-3 rounded-xl font-bold hover:bg-sky-700 transition">確定</button>
+        </div>
+    </div>
+
+    <script>
+        // --- 核心定義 ---
+        let GRID_SIZE = 9;
+        const DEFAULT_GRID_SIZE = 9;
+        let startPos = { x: 4, y: 8 };
+        let endPos = { x: 4, y: 0 };
+
+        const TEMPLATE_LEVELS = [
+            { name: "第一關：自由航行", desc: "熟悉指令，探索海域。", limits: null, showRepeat: false, obstacles: [], portals: [], startPos: { x: 4, y: 8 }, endPos: { x: 4, y: 0 } },
+            { name: "第二關：精準控制", desc: "資源限制！請謹慎規劃。", limits: { forward: 7, backward: 1, left: 2, right: 2 }, showRepeat: false, obstacles: [], portals: [], startPos: { x: 4, y: 8 }, endPos: { x: 4, y: 0 } },
+            { name: "第三關：邏輯跳躍", desc: "僅一張前進卡？運用重複的魔力！", limits: { forward: 1, backward: 0, left: 0, right: 0 }, showRepeat: true, obstacles: [], portals: [], startPos: { x: 4, y: 8 }, endPos: { x: 4, y: 0 } },
+            { name: "第四關：避開礁石", desc: "前方有巨石阻擋，請繞道而行。", limits: { forward: 5, left: 2, right: 2, backward: 1 }, showRepeat: true, obstacles: [{ x: 4, y: 4 }], portals: [], startPos: { x: 4, y: 8 }, endPos: { x: 4, y: 0 } },
+            {
+                name: "第五關：傳送秘境", desc: "跨越礁石牆，尋找神祕傳送門。", limits: { forward: 2, left: 1, right: 1 }, showRepeat: true,
+                obstacles: [{ x: 0, y: 4 }, { x: 1, y: 4 }, { x: 2, y: 4 }, { x: 3, y: 4 }, { x: 4, y: 4 }, { x: 5, y: 4 }, { x: 6, y: 4 }, { x: 7, y: 4 }, { x: 8, y: 4 }],
+                portals: [{ x: 0, y: 8, targetX: 8, targetY: 0 }, { x: 8, y: 0, targetX: 0, targetY: 8 }], startPos: { x: 4, y: 8 }, endPos: { x: 4, y: 0 }
+            },
+            {
+                name: "第六關：綜合闖關", desc: "熟悉指令，探索海域。",
+                limits: { forward: 2, backward: 2, left: 2, right: 2 }, showRepeat: true,
+                obstacles: [{ x: 3, y: 7 }, { x: 1, y: 6 }, { x: 3, y: 5 }, { x: 1, y: 4 }, { x: 3, y: 3 }, { x: 1, y: 2 }, { x: 1, y: 0 }, { x: 7, y: 0 }, { x: 7, y: 2 }, { x: 7, y: 4 }, { x: 7, y: 6 }, { x: 5, y: 7 }, { x: 5, y: 5 }, { x: 5, y: 3 }, { x: 4, y: 1 }],
+                portals: [], startPos: { x: 4, y: 8 }, endPos: { x: 4, y: 0 }
+            }
+        ];
+
+        let gameMode = 'challenge'; // 'challenge' 或 'custom'
+        let customLevels = []; // 實際運行的關卡陣列 (從 localStorage 載入)
+
+        let currentLevelIndex = 0;
+        let unlockedLevel = 0;
+        let shipIcon = '🚢';
+        let shipState = { x: 4, y: 8, dir: 0 };
+        let program = [];
+        let isRunning = false;
+        let isMusicOn = false;
+        let hasWonCurrentRun = false;
+        let isGameCleared = localStorage.getItem('pirate_game_cleared') === 'true';
+        let levelStartTime = 0;
+        let gameTimerInterval = null;
+
+        // --- 編輯器變數 ---
+        let isEditorMode = false;
+        let currentEditTool = 'start';
+        let tempLevel = null;
+        let pirateList = []; // 運行中的海盜狀態
+        let hasKey = false;
+        let driftwoodList = []; // 運行中的浮木狀態
+
+        // --- 音樂音效 (音樂改為本地隨機循環，加強錯誤處理) ---
+        /**
+         * 重要說明：
+         * 1. 請在與 index.html 同層建立 music 資料夾
+         * 2. 在下方 playlist 陣列中填入您的 mp3 檔名
+         */
+        const playlist = [
+            'bgm1.mp3',
+            'bgm2.mp3',
+            'bgm3.mp3'
+        ];
+        const bgm = new Audio();
+        bgm.volume = 0.4;
+
+        let failedTracks = new Set(); // 記錄讀取失敗的檔案
+
+        // 當音樂讀取失敗時 (例如 404)，自動跳到下一首
+        bgm.onerror = () => {
+            console.error(`無法讀取音樂檔: ${bgm.src}，嘗試隨機播放其他曲目...`);
+            const currentTrack = bgm.src.split('/').pop();
+            failedTracks.add(currentTrack);
+
+            if (failedTracks.size < playlist.length && isMusicOn) {
+                setTimeout(playRandomTrack, 500); // 稍微延遲後嘗試下一首
+            } else if (failedTracks.size >= playlist.length) {
+                console.warn("播放清單中的所有音樂皆無法讀取，請檢查 music 資料夾。");
+                isMusicOn = false;
+                document.getElementById('music-btn').innerText = '🎵';
+            }
+        };
+
+        bgm.addEventListener('ended', () => {
+            if (isMusicOn) playRandomTrack();
+        });
+
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playSfx(freq, type = 'sine', duration = 0.1, volume = 0.05) {
+            try {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                gain.gain.setValueAtTime(volume, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch (e) { }
+        }
+
+        function playRandomTrack() {
+            if (playlist.length === 0) return;
+
+            // 過濾掉已經失敗過的曲目
+            const availableTracks = playlist.filter(t => !failedTracks.has(t));
+
+            if (availableTracks.length === 0) {
+                failedTracks.clear(); // 如果全失敗了，重設清單再試一次 (或許檔案剛好放進去了)
+                return;
+            }
+
+            const randomIndex = Math.floor(Math.random() * availableTracks.length);
+            const nextTrack = availableTracks[randomIndex];
+
+            bgm.src = `music/${nextTrack}`;
+            bgm.load();
+
+            const playPromise = bgm.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(e => {
+                    console.warn("音樂播放受限或檔案錯誤:", e.message);
+                    // 這裡的錯誤會由上面的 bgm.onerror 捕獲
+                });
+            }
+        }
+        function selectMode(mode) {
+            gameMode = mode;
+            document.getElementById('mode-screen').classList.add('hidden');
+            document.getElementById('selection-screen').classList.remove('hidden');
+            playSfx(880);
+
+            // 根據模式決定是否顯示編輯器按鈕
+            const editBtn = document.querySelector('button[onclick="toggleEditor()"]');
+            if (editBtn) {
+                editBtn.style.display = (mode === 'custom') ? 'inline-block' : 'none';
+            }
+        }
+
+        function backToMode() {
+            document.getElementById('selection-screen').classList.add('hidden');
+            document.getElementById('mode-screen').classList.remove('hidden');
+            playSfx(440);
+        }
+
+        function toggleMusic() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            isMusicOn = !isMusicOn;
+            document.getElementById('music-btn').innerText = isMusicOn ? '🔊' : '🎵';
+            if (isMusicOn) {
+                if (!bgm.src || bgm.paused) {
+                    playRandomTrack();
+                } else {
+                    bgm.play().catch(e => {
+                        console.warn("播放受限，嘗試重新加載...");
+                        playRandomTrack();
+                    });
+                }
+            } else {
+                bgm.pause();
+            }
+        }
+
+        function adjustVolume(val) { bgm.volume = val; }
+
+
+
+        // --- 遊戲邏輯 ---
+        function selectShip(icon) {
+            shipIcon = icon;
+            document.querySelectorAll('.ship-option').forEach(el => el.classList.remove('selected'));
+            const icons = ['🚢', '⛵', '🛥️', '🛶'];
+            const idx = icons.indexOf(icon);
+            if (idx !== -1) document.getElementById(`opt-${idx}`).classList.add('selected');
+            playSfx(440);
+        }
+
+        function startGame() {
+            document.getElementById('selection-screen').classList.add('hidden');
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            loadLevels(); // 根據 gameMode 載入關卡
+
+            if (isGameCleared) document.getElementById('master-badge').classList.remove('hidden');
+
+            isMusicOn = true;
+            document.getElementById('music-btn').innerText = '🔊';
+            playRandomTrack();
+
+            switchLevel(0);
+        }
+
+        function loadLevels() {
+            if (gameMode === 'challenge') {
+                customLevels = JSON.parse(JSON.stringify(TEMPLATE_LEVELS));
+                unlockedLevel = parseInt(localStorage.getItem('pirate_challenge_unlocked') || '0');
+            } else {
+                const saved = localStorage.getItem('pirate_game_custom_levels');
+                if (saved) {
+                    customLevels = JSON.parse(saved);
+                } else {
+                    customLevels = [JSON.parse(JSON.stringify(TEMPLATE_LEVELS[0]))];
+                    customLevels[0].name = "我的自訂關卡";
+                    saveLevelsToStorage();
+                }
+                unlockedLevel = customLevels.length; // 自訂模式不鎖關
+            }
+            updateLevelNav();
+        }
+
+        function saveLevelsToStorage() {
+            if (gameMode === 'custom') {
+                localStorage.setItem('pirate_game_custom_levels', JSON.stringify(customLevels));
+            } else {
+                localStorage.setItem('pirate_challenge_unlocked', unlockedLevel);
+            }
+        }
+
+        function updateLevelNav() {
+            const nav = document.getElementById('level-nav');
+            nav.innerHTML = '';
+            customLevels.forEach((lvl, idx) => {
+                const btn = document.createElement('button');
+                const isLocked = idx > unlockedLevel;
+                btn.id = `lvl-btn-${idx}`;
+                btn.className = `lvl-btn px-3 py-1 rounded-full text-xs font-bold transition ${isLocked ? 'lvl-locked' : ''} ${idx === currentLevelIndex ? 'bg-sky-600 text-white shadow-lg scale-105' : 'bg-gray-100 text-gray-500'}`;
+                btn.innerText = (lvl.name.length > 5 ? lvl.name.substring(0, 4) + '..' : lvl.name) + (isLocked ? ' 🔒' : '');
+                btn.onclick = () => switchLevel(idx);
+                nav.appendChild(btn);
+            });
+        }
+
+        function initBoard() {
+            const isEd = isEditorMode;
+            const lvl = isEd ? tempLevel : customLevels[currentLevelIndex];
+            const size = lvl.gridSize || DEFAULT_GRID_SIZE;
+            GRID_SIZE = size;
+
+            const boardId = isEd ? 'editor-board' : 'game-board';
+            const board = document.getElementById(boardId);
+            if (!board) return;
+            board.innerHTML = '';
+            board.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
+            board.style.gridTemplateRows = `repeat(${size}, 1fr)`;
+
+            // 重設運行狀態
+            pirateList = (lvl.pirates || []).map(p => ({ ...p, currentPos: { x: p.x, y: p.y }, currentDir: p.dir || 1 }));
+            driftwoodList = (lvl.driftwoods || []).map(d => ({ ...d }));
+            hasKey = false;
+            startPos = lvl.startPos || { x: 0, y: size - 1 };
+            endPos = lvl.endPos || { x: size - 1, y: 0 };
+
+            for (let y = 0; y < size; y++) {
+                for (let x = 0; x < size; x++) {
+                    const cell = document.createElement('div');
+                    // 移除固定寬高，改用 fr 讓格子自動填滿正方形容器，達成上下左右完美對稱
+                    cell.className = `relative border border-white/20 flex items-center justify-center text-2xl cursor-pointer transition hover:bg-white/10`;
+                    cell.onclick = () => onCellClick(x, y);
+
+                    // 背景裝飾 (波浪)
+                    if ((x + y) % 7 === 0) {
+                        const wave = document.createElement('span');
+                        wave.className = 'absolute inset-0 flex items-center justify-center text-[10px] text-white/20 select-none pointer-events-none';
+                        wave.innerText = '~~';
+                        cell.appendChild(wave);
+                    }
+
+                    const objLayer = document.createElement('div');
+                    objLayer.id = `${boardId}-obj-${x}-${y}`;
+                    objLayer.className = 'absolute inset-0 flex items-center justify-center pointer-events-none';
+
+                    renderCellObject(objLayer, x, y, lvl);
+
+                    cell.appendChild(objLayer);
+                    board.appendChild(cell);
+                }
+            }
+            if (!isEd) updateShipPosition();
+            else updateEditorFields();
+        }
+
+        function renderCellObject(layer, x, y, lvl) {
+            layer.innerHTML = '';
+            const size = lvl.gridSize || DEFAULT_GRID_SIZE;
+            const s = lvl.startPos || { x: 0, y: size - 1 };
+            const e = lvl.endPos || { x: size - 1, y: 0 };
+
+            if (x === s.x && y === s.y) {
+                layer.innerHTML = '<span class="text-2xl drop-shadow-md">🚩</span>';
+            } else if (x === e.x && y === e.y) {
+                layer.innerHTML = '<span class="text-2xl drop-shadow-md">💰</span>';
+            } else if ((lvl.obstacles || []).some(o => o.x === x && o.y === y)) {
+                layer.innerHTML = '<span class="text-xl">🪨</span>';
+            } else if ((lvl.portals || []).some(p => p.x === x && p.y === y)) {
+                layer.innerHTML = '<span class="text-xl">🌀</span>';
+            } else if ((lvl.driftwoods || []).some(d => d.x === x && d.y === y)) {
+                layer.innerHTML = '<span class="text-xl">🪵</span>';
+            } else if ((lvl.keys || []).some(k => k.x === x && k.y === y)) {
+                layer.innerHTML = '<span class="text-xl">🔑</span>';
+            } else if ((lvl.doors || []).some(d => d.x === x && d.y === y)) {
+                layer.innerHTML = '<span class="text-xl">🚪</span>';
+            } else if ((lvl.pirates || []).some(p => p.x === x && p.y === y)) {
+                layer.innerHTML = '<span class="text-xl">🏴‍☠️</span>';
+            }
+        }
+
+        function switchLevel(index) {
+            if (isRunning) return;
+
+            if (index > unlockedLevel) {
+                playSfx(150, 'sawtooth', 0.3, 0.1);
+                showModal('🔒 關卡鎖定', '請先完成前面的關卡！', '🚫', '知道了', false);
+                return;
+            }
+
+            currentLevelIndex = index;
+            const lvl = customLevels[index];
+
+            hasWonCurrentRun = false;
+            startPos = lvl.startPos || { x: 4, y: 8 };
+            shipState = { x: startPos.x, y: startPos.y, dir: 0 };
+
+            // 更新導覽列樣式
+            document.querySelectorAll('.lvl-btn').forEach((btn, idx) => {
+                const isLocked = idx > unlockedLevel;
+                btn.classList.toggle('lvl-locked', isLocked);
+                btn.innerHTML = `第${['一', '二', '三', '四', '五'][idx]}關${isLocked ? ' 🔒' : ''}`;
+                btn.className = `lvl-btn px-3 py-1 rounded-full text-xs font-bold transition ${idx === index ? 'bg-sky-600 text-white shadow-lg scale-105' : 'bg-gray-100 text-gray-500'}`;
+            });
+
+            startTimer();
+            document.getElementById('level-desc').innerText = `${lvl.name}：${lvl.desc}`;
+            clearProgram();
+            initBoard();
+            playSfx(523);
+        }
+
+        function updateCardLimits() {
+            const lvl = isEditorMode ? tempLevel : customLevels[currentLevelIndex];
+            const types = ['forward', 'backward', 'left', 'right', 'bomb', 'repeat2', 'repeat3', 'repeat5'];
+            let hasAnyRepeat = false;
+
+            types.forEach(type => {
+                const isRepeat = type.startsWith('repeat');
+                const btnId = isRepeat ? `btn-x${type.replace('repeat', '')}` : `btn-${type}`;
+                const btn = document.getElementById(btnId);
+                const limitDispId = isRepeat ? `limit-x${type.replace('repeat', '')}` : `limit-${type}`;
+                const limitDisp = document.getElementById(limitDispId);
+
+                if (!btn || !limitDisp) return;
+
+                // --- 處理指令卡片顯示/隱藏 (針對內建關卡的規則) ---
+                let isVisible = true;
+                if (!isEditorMode && gameMode === 'challenge') {
+                    if (currentLevelIndex <= 1) { // 第一、二關 (索引 0, 1)
+                        isVisible = ['forward', 'backward', 'left', 'right'].includes(type);
+                    } else { // 第三關以後 (索引 2+)
+                        isVisible = ['forward', 'backward', 'left', 'right', 'repeat2', 'repeat3'].includes(type);
+                    }
+                }
+
+                const container = isRepeat ? btn.parentElement : btn;
+                if (container) {
+                    container.style.display = isVisible ? 'flex' : 'none';
+                }
+
+                if (!isVisible) return;
+                // ----------------------------------------------
+
+                if (lvl.limits && lvl.limits[type] !== undefined) {
+                    const countInProgram = isRepeat
+                        ? program.reduce((acc, cmd) => acc + cmd.repeats.filter(r => r === parseInt(type.replace('repeat', ''))).length, 0)
+                        : program.filter(p => p.type === type).length;
+
+                    const remaining = lvl.limits[type] - countInProgram;
+                    limitDisp.innerText = `${remaining} 張`;
+                    btn.disabled = remaining <= 0;
+
+                    if (isRepeat && lvl.limits[type] > 0) hasAnyRepeat = true;
+                } else {
+                    limitDisp.innerText = "∞";
+                    btn.disabled = false;
+                    if (isRepeat) hasAnyRepeat = true;
+                }
+            });
+
+            const repeatSection = document.getElementById('repeat-section');
+            if (repeatSection) repeatSection.style.display = hasAnyRepeat ? 'block' : 'none';
+        }
+
+        function updateShipPosition() {
+            const lvl = isEditorMode ? tempLevel : customLevels[currentLevelIndex];
+            const size = lvl.gridSize || DEFAULT_GRID_SIZE;
+
+            // 移除舊的船隻位置，避免產生殘影
+            document.querySelectorAll('.ship-wrapper').forEach(el => el.remove());
+
+            const cell = document.getElementById('game-board').children[shipState.y * size + shipState.x];
+            if (!cell) return;
+            const wrapper = document.createElement('div');
+            wrapper.className = `ship-wrapper`;
+            const arrowContainer = document.createElement('div');
+            arrowContainer.className = `direction-arrow-container arrow-pos-${shipState.dir}`;
+            const arrowBody = document.createElement('div');
+            arrowBody.className = `direction-arrow`;
+            arrowContainer.appendChild(arrowBody);
+            const ship = document.createElement('div');
+            ship.className = 'text-4xl drop-shadow-lg relative z-50';
+            ship.innerHTML = shipIcon;
+            wrapper.appendChild(arrowContainer);
+            wrapper.appendChild(ship);
+            const ripple = document.createElement('div');
+            ripple.className = 'water-ripple';
+            wrapper.appendChild(ripple);
+            cell.appendChild(wrapper);
+            setTimeout(() => ripple.remove(), 2000);
+        }
+
+        function addCommand(type) {
+            if (isRunning) return;
+            program.push({ type, repeats: [] });
+            renderProgram();
+            updateCardLimits();
+            playSfx(600, 'sine', 0.05);
+        }
+
+        function applyRepeat(times) {
+            if (isRunning || program.length === 0) return;
+
+            // 檢查限制
+            const lvl = isEditorMode ? tempLevel : customLevels[currentLevelIndex];
+            const type = `repeat${times}`;
+            if (lvl.limits && lvl.limits[type] !== undefined) {
+                const countInProgram = program.reduce((acc, cmd) => acc + cmd.repeats.filter(r => r === times).length, 0);
+                if (countInProgram >= lvl.limits[type]) {
+                    playSfx(150, 'sawtooth', 0.2, 0.1);
+                    return;
+                }
+            }
+
+            program[program.length - 1].repeats.push(times);
+            renderProgram();
+            updateCardLimits();
+            playSfx(1000, 'sine', 0.05);
+        }
+
+        function clearProgram() { if (isRunning) return; program = []; renderProgram(); updateCardLimits(); }
+        function popCommand() { if (isRunning || program.length === 0) return; program.pop(); renderProgram(); updateCardLimits(); }
+
+        function renderProgram() {
+            const list = document.getElementById('program-list');
+            list.innerHTML = '';
+            const cmdIcons = { 'forward': '⬆️', 'backward': '⬇️', 'left': '↪️', 'right': '↩️', 'bomb': '💣' };
+            const cmdNames = { 'forward': '前進', 'backward': '後退', 'left': '左轉', 'right': '右轉', 'bomb': '炸彈' };
+            const cmdColors = { 'forward': 'bg-blue-600', 'backward': 'bg-blue-600', 'left': 'bg-indigo-600', 'right': 'bg-indigo-600', 'bomb': 'bg-red-600' };
+            program.forEach((cmd, idx) => {
+                const item = document.createElement('div');
+                item.className = `command-card ${cmdColors[cmd.type]}`;
+                item.id = `program-item-${idx}`;
+                let repsHtml = cmd.repeats.map(r => `<span class="repeat-badge ml-1">x${r}</span>`).join('');
+                item.innerHTML = `<div class="flex items-center gap-2 overflow-hidden"><div class="step-number">${idx + 1}</div><span class="text-xl flex-shrink-0">${cmdIcons[cmd.type]}</span><span class="whitespace-nowrap text-sm">${cmdNames[cmd.type]}</span><div class="flex flex-wrap">${repsHtml}</div></div><button onclick="removeCommand(${idx})" class="text-white/40 hover:text-white ml-2 text-xs flex-shrink-0">✕</button>`;
+                list.appendChild(item);
+            });
+            list.scrollTop = list.scrollHeight;
+        }
+
+        function removeCommand(index) { if (isRunning) return; program.splice(index, 1); renderProgram(); updateCardLimits(); }
+
+        async function runProgram() {
+            if (isRunning || program.length === 0) return;
+            isRunning = true;
+            document.getElementById('run-btn').disabled = true;
+
+            const lvl = isEditorMode ? tempLevel : customLevels[currentLevelIndex];
+
+            shipState = { x: startPos.x, y: startPos.y, dir: 0 };
+
+            // 重設運行狀態
+            pirateList = (lvl.pirates || []).map(p => ({ ...p, currentPos: { x: p.x, y: p.y }, currentDir: p.dir || 1 }));
+            driftwoodList = (lvl.driftwoods || []).map(d => ({ ...d }));
+            hasKey = false;
+
+            updateShipPosition();
+            renderDynamicObjects();
+            await sleep(800);
+
+            let winStatus = false;
+            for (let i = 0; i < program.length; i++) {
+                const cmd = program[i];
+                const element = document.getElementById(`program-item-${i}`);
+                if (element) { element.classList.add('executing'); element.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+                const totalRepeat = cmd.repeats.reduce((a, b) => a * b, 1);
+
+                for (let r = 0; r < totalRepeat; r++) {
+                    const res = moveShip(cmd.type);
+                    updateShipPosition();
+
+                    if (res === 'rotate') playSfx(400, 'sine', 0.1, 0.05);
+                    else if (res === 'ok') playSfx(300, 'sine', 0.1, 0.05);
+                    else if (res === 'bomb') playSfx(150, 'sawtooth', 0.3, 0.2);
+
+                    // 每走一步，海盜移動一步
+                    if (res !== 'rotate') {
+                        movePirates();
+                        renderDynamicObjects();
+                    }
+
+                    await sleep(600);
+
+                    // 檢查海盜碰撞
+                    if (pirateList.some(p => p.currentPos.x === shipState.x && p.currentPos.y === shipState.y)) {
+                        playSfx(100, 'sawtooth', 0.5, 0.1);
+                        showModal('💥 航行失敗', res === 'hit' ? '撞上礁石沉船了！' : '船隻駛出了邊界！', '❌', '重新規劃');
+                        winStatus = 'fail'; break;
+                    }
+
+                    if (res === 'hit_obstacle' || res === 'hit_driftwood' || res === 'out' || res === 'locked') {
+                        playSfx(100, 'sawtooth', 0.5, 0.1);
+                        let msg = '撞上礁石沉船了！';
+                        if (res === 'hit_driftwood') msg = '撞上浮木，航行中斷！';
+                        if (res === 'out') msg = '船隻駛出了邊界！';
+                        if (res === 'locked') msg = '門被鎖住了，需要鑰匙！';
+                        showModal('💥 航行失敗', msg, '❌', '重新規劃');
+                        winStatus = 'fail'; break;
+                    }
+
+                    // 檢查鑰匙
+                    const keyIdx = (lvl.keys || []).findIndex(k => k.x === shipState.x && k.y === shipState.y);
+                    if (keyIdx !== -1) {
+                        if (!hasKey) {
+                            hasKey = true;
+                            playSfx(800, 'sine', 0.2, 0.1);
+                            // 移除地圖上的鑰匙顯示
+                            const keyLayer = document.getElementById(`cell-obj-${shipState.x}-${shipState.y}`);
+                            if (keyLayer) keyLayer.innerHTML = '';
+                        }
+                    }
+
+                    if (lvl.portals) {
+                        const p = lvl.portals.find(p => p.x === shipState.x && p.y === shipState.y);
+                        if (p) {
+                            playSfx(1200, 'sine', 0.4, 0.05);
+                            shipState.x = p.targetX; shipState.y = p.targetY;
+                            updateShipPosition();
+                            await sleep(600);
+                        }
+                    }
+                    if (shipState.x === endPos.x && shipState.y === endPos.y) { winStatus = true; break; }
+                }
+                if (winStatus === 'fail') break;
+                if (element) element.classList.remove('executing');
+            }
+
+            // 只有在所有指令執行完畢後，才檢查是否停在終點
+            if (winStatus !== 'fail') {
+                if (shipState.x === endPos.x && shipState.y === endPos.y) {
+                    winStatus = true;
+                } else {
+                    winStatus = false;
+                }
+            }
+
+            // 指令執行完畢後判定是否在終點
+            if (winStatus !== 'fail') {
+                if (shipState.x === endPos.x && shipState.y === endPos.y) {
+                    winStatus = true;
+                }
+            }
+
+            if (winStatus === true) {
+                hasWonCurrentRun = true;
+                playSfx(880, 'sine', 0.2, 0.05);
+                setTimeout(() => playSfx(1046, 'sine', 0.3, 0.05), 100);
+                if (currentLevelIndex === unlockedLevel && unlockedLevel < 4) unlockedLevel++;
+
+                stopTimer();
+                const finalTime = document.getElementById('timer-display').innerText;
+                await captureScreen();
+
+                if (currentLevelIndex === 4) {
+                    isGameCleared = true;
+                    localStorage.setItem('pirate_game_cleared', 'true');
+                    document.getElementById('master-badge').classList.remove('hidden');
+                    launchCelebration();
+                    showModal('🌟 傳奇航海家！', `恭喜你完成了所有挑戰，成為真正的尋寶大師！\n完成時間：${finalTime}`, '👑', '重新挑戰', true);
+                } else {
+                    showModal('🏆 任務達成！', `你成功的抵達了終點！\n完成時間：${finalTime}`, '💰', '進入下一關');
+                }
+            } else if (winStatus === false) {
+                playSfx(200, 'sine', 0.3, 0.05);
+                showModal('⚓ 航行中止', '指令執行完畢，但沒抵達終點。', '🗺️', '調整指令', false);
+            }
+            isRunning = false;
+            document.getElementById('run-btn').disabled = false;
+        }
+
+        function renderDynamicObjects() {
+            const isEd = isEditorMode;
+            const lvl = isEd ? tempLevel : customLevels[currentLevelIndex];
+            const size = lvl.gridSize || DEFAULT_GRID_SIZE;
+            const boardId = isEd ? 'editor-board' : 'game-board';
+
+            for (let y = 0; y < size; y++) {
+                for (let x = 0; x < size; x++) {
+                    const layer = document.getElementById(`${boardId}-obj-${x}-${y}`);
+                    if (!layer) continue;
+
+                    const pirate = pirateList.find(p => p.currentPos.x === x && p.currentPos.y === y);
+                    const driftwood = driftwoodList.find(d => d.x === x && d.y === y);
+
+                    if (pirate) {
+                        layer.innerHTML = '<span class="text-xl">🏴‍☠️</span>';
+                    } else if (driftwood) {
+                        layer.innerHTML = '<span class="text-xl">🪵</span>';
+                    } else {
+                        // 檢查原本是浮木或鑰匙但現在已消失的情況
+                        const wasDriftwood = (lvl.driftwoods || []).some(d => d.x === x && d.y === y);
+                        const wasKey = (lvl.keys || []).some(k => k.x === x && k.y === y);
+
+                        if (wasDriftwood || (wasKey && hasKey)) {
+                            layer.innerHTML = '';
+                        } else {
+                            renderCellObject(layer, x, y, lvl);
+                        }
+                    }
+                }
+            }
+        }
+
+        function movePirates() {
+            pirateList.forEach(p => {
+                let { x, y } = p.currentPos;
+                if (p.axis === 'x') {
+                    x += p.currentDir;
+                    if (x < p.range[0] || x > p.range[1]) {
+                        p.currentDir *= -1;
+                        x += p.currentDir * 2;
+                        // 再次檢查邊界
+                        x = Math.max(p.range[0], Math.min(p.range[1], x));
+                    }
+                } else {
+                    y += p.currentDir;
+                    if (y < p.range[0] || y > p.range[1]) {
+                        p.currentDir *= -1;
+                        y += p.currentDir * 2;
+                        y = Math.max(p.range[0], Math.min(p.range[1], y));
+                    }
+                }
+                p.currentPos = { x, y };
+            });
+        }
+
+        function moveShip(type) {
+            let { x, y, dir } = shipState;
+            const lvl = isEditorMode ? tempLevel : customLevels[currentLevelIndex];
+            if (type === 'left') { dir = (dir + 3) % 4; shipState.dir = dir; return 'rotate'; }
+            if (type === 'right') { dir = (dir + 1) % 4; shipState.dir = dir; return 'rotate'; }
+
+            if (type === 'bomb') {
+                let bx = x, by = y;
+                if (dir === 0) by--; else if (dir === 1) bx++; else if (dir === 2) by++; else if (dir === 3) bx--;
+                const dIdx = driftwoodList.findIndex(d => d.x === bx && d.y === by);
+                if (dIdx !== -1) {
+                    driftwoodList.splice(dIdx, 1);
+                    return 'bomb';
+                }
+                return 'ok'; // 炸彈沒炸到東西也算執行成功
+            }
+
+            if (type === 'forward') {
+                if (dir === 0) y--; else if (dir === 1) x++; else if (dir === 2) y++; else if (dir === 3) x--;
+            } else if (type === 'backward') {
+                if (dir === 0) y++; else if (dir === 1) x--; else if (dir === 2) y--; else if (dir === 3) x++;
+            }
+
+            const size = lvl.gridSize || DEFAULT_GRID_SIZE;
+            if (x < 0 || x >= size || y < 0 || y >= size) return 'out';
+            if ((lvl.obstacles || []).some(o => o.x === x && o.y === y)) return 'hit_obstacle';
+            if (driftwoodList.some(d => d.x === x && d.y === y)) return 'hit_driftwood';
+            if ((lvl.doors || []).some(d => d.x === x && d.y === y) && !hasKey) return 'locked';
+
+            shipState = { x, y, dir };
+            return 'ok';
+        }
+
+        // --- 編輯器邏輯 ---
+        function toggleEditor() {
+            isEditorMode = true;
+            document.getElementById('game-container').classList.add('hidden');
+            document.getElementById('selection-screen').classList.add('hidden');
+            document.getElementById('editor-view').classList.remove('hidden');
+
+            // 載入目前關卡
+            tempLevel = JSON.parse(JSON.stringify(customLevels[currentLevelIndex]));
+            if (!tempLevel.gridSize) tempLevel.gridSize = DEFAULT_GRID_SIZE;
+
+            initBoard();
+            updateCardLimits();
+            updateEditorFields();
+        }
+
+        function exitEditor() {
+            isEditorMode = false;
+            document.getElementById('editor-view').classList.add('hidden');
+            document.getElementById('game-container').classList.remove('hidden');
+            switchLevel(currentLevelIndex);
+        }
+
+        function setEditTool(tool) {
+            currentEditTool = tool;
+            document.querySelectorAll('.edit-tool').forEach(btn => {
+                btn.classList.toggle('active-tool', btn.getAttribute('data-tool') === tool);
+                btn.classList.toggle('ring-4', btn.getAttribute('data-tool') === tool);
+                btn.classList.toggle('ring-purple-400', btn.getAttribute('data-tool') === tool);
+            });
+            document.getElementById('pirate-settings').classList.toggle('hidden', tool !== 'pirate');
+        }
+
+        function onCellClick(x, y) {
+            if (!isEditorMode) return;
+            const lvl = tempLevel;
+
+            // 清除該格既有物件 (除了起終點)
+            lvl.obstacles = (lvl.obstacles || []).filter(o => o.x !== x || o.y !== y);
+            lvl.portals = (lvl.portals || []).filter(p => p.x !== x || p.y !== y);
+            lvl.driftwoods = (lvl.driftwoods || []).filter(d => d.x !== x || d.y !== y);
+            lvl.keys = (lvl.keys || []).filter(k => k.x !== x || k.y !== y);
+            lvl.doors = (lvl.doors || []).filter(d => d.x !== x || d.y !== y);
+            lvl.pirates = (lvl.pirates || []).filter(p => p.x !== x || p.y !== y);
+
+            if (currentEditTool === 'start') {
+                lvl.startPos = { x, y };
+            } else if (currentEditTool === 'end') {
+                lvl.endPos = { x, y };
+            } else if (currentEditTool === 'obstacle') {
+                lvl.obstacles.push({ x, y });
+            } else if (currentEditTool === 'driftwood') {
+                lvl.driftwoods.push({ x, y });
+            } else if (currentEditTool === 'key') {
+                lvl.keys.push({ x, y });
+            } else if (currentEditTool === 'door') {
+                lvl.doors.push({ x, y });
+            } else if (currentEditTool === 'pirate') {
+                const axis = document.getElementById('pirate-axis').value;
+                const min = parseInt(document.getElementById('pirate-range-min').value);
+                const max = parseInt(document.getElementById('pirate-range-max').value);
+                lvl.pirates.push({ x, y, axis, range: [min, max], dir: 1 });
+            } else if (currentEditTool === 'portal') {
+                const tx = prompt("傳送終點 X (0-8):", "0");
+                const ty = prompt("傳送終點 Y (0-8):", "0");
+                lvl.portals.push({ x, y, targetX: parseInt(tx), targetY: parseInt(ty) });
+            }
+
+            initBoard();
+        }
+
+        function updateEditorFields() {
+            if (!tempLevel) return;
+            const lvl = tempLevel;
+
+            document.getElementById('edit-level-name').value = lvl.name || "";
+            document.getElementById('edit-level-desc').value = lvl.desc || "";
+
+            const gridSizeInput = document.getElementById('edit-grid-size');
+            const gridSizeDisplay = document.getElementById('grid-size-display');
+            gridSizeInput.value = lvl.gridSize || DEFAULT_GRID_SIZE;
+            gridSizeDisplay.innerText = gridSizeInput.value;
+
+            const types = [
+                { id: 'forward', name: '前進', icon: '⬆️' },
+                { id: 'backward', name: '後退', icon: '⬇️' },
+                { id: 'left', name: '左轉', icon: '↪️' },
+                { id: 'right', name: '右轉', icon: '↩️' },
+                { id: 'bomb', name: '炸彈', icon: '💣' },
+                { id: 'repeat2', name: '重複 x2', icon: '🔁' },
+                { id: 'repeat3', name: '重複 x3', icon: '🔁' },
+                { id: 'repeat5', name: '重複 x5', icon: '🔁' }
+            ];
+
+            const sync = () => {
+                lvl.name = document.getElementById('edit-level-name').value;
+                lvl.desc = document.getElementById('edit-level-desc').value;
+                lvl.gridSize = parseInt(gridSizeInput.value);
+                gridSizeDisplay.innerText = lvl.gridSize;
+
+                lvl.limits = {};
+                types.forEach(type => {
+                    const cb = document.getElementById(`unlimit-${type.id}`);
+                    const input = document.getElementById(`limit-val-${type.id}`);
+                    const inf = document.getElementById(`inf-${type.id}`);
+                    if (cb && input) {
+                        if (!cb.checked) {
+                            lvl.limits[type.id] = parseInt(input.value) || 0;
+                        }
+                    }
+                });
+                updateCardLimits();
+            };
+
+            const container = document.getElementById('limit-settings-container');
+            container.innerHTML = '';
+
+            types.forEach(type => {
+                const limitVal = lvl.limits?.[type.id];
+                const isUnlimited = limitVal === undefined || limitVal === null || limitVal >= 99;
+
+                const div = document.createElement('div');
+                div.className = 'flex flex-col bg-slate-700/50 p-2 rounded-xl border border-slate-600 transition hover:border-sky-500/50';
+                div.innerHTML = `
+                    <div class="flex justify-between items-center mb-1">
+                        <div class="flex items-center gap-1">
+                            <span class="text-xs">${type.icon}</span>
+                            <span class="text-[10px] font-bold text-slate-300">${type.name}</span>
+                        </div>
+                        <label class="text-[8px] flex items-center gap-1 cursor-pointer text-slate-400 hover:text-sky-400 transition">
+                            <input type="checkbox" id="unlimit-${type.id}" ${isUnlimited ? 'checked' : ''} class="w-2.5 h-2.5 accent-sky-500"> 不限
+                        </label>
+                    </div>
+                    <div class="relative">
+                        <input type="number" id="limit-val-${type.id}" 
+                            class="w-full bg-slate-800 border border-slate-600 rounded-lg text-[10px] py-1 px-2 text-white outline-none focus:ring-1 focus:ring-sky-500 ${isUnlimited ? 'opacity-30 cursor-not-allowed' : ''}" 
+                            value="${isUnlimited ? 5 : limitVal}" ${isUnlimited ? 'disabled' : ''}>
+                        <span id="inf-${type.id}" class="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-500 ${isUnlimited ? '' : 'hidden'}">∞</span>
+                    </div>
+                `;
+                container.appendChild(div);
+
+                const cb = div.querySelector(`#unlimit-${type.id}`);
+                const input = div.querySelector(`#limit-val-${type.id}`);
+                const inf = div.querySelector(`#inf-${type.id}`);
+
+                cb.onchange = () => {
+                    input.disabled = cb.checked;
+                    input.classList.toggle('opacity-30', cb.checked);
+                    input.classList.toggle('cursor-not-allowed', cb.checked);
+                    if (inf) inf.classList.toggle('hidden', !cb.checked);
+                    sync();
+                };
+                input.oninput = sync;
+            });
+
+            document.getElementById('edit-level-name').oninput = sync;
+            document.getElementById('edit-level-desc').oninput = sync;
+            gridSizeInput.oninput = () => {
+                sync();
+                initBoard();
+            };
+
+            updateLevelManagerList();
+        }
+
+        function saveCurrentLevel() {
+            if (currentLevelIndex === -1) {
+                addNewLevel();
+                return;
+            }
+            customLevels[currentLevelIndex] = JSON.parse(JSON.stringify(tempLevel));
+            saveLevelsToStorage();
+            updateLevelNav();
+            updateLevelManagerList();
+            alert("關卡已更新儲存！");
+        }
+
+        function addNewLevel() {
+            const newLvl = JSON.parse(JSON.stringify(tempLevel));
+            if (!newLvl.name) newLvl.name = "新關卡";
+            customLevels.push(newLvl);
+            saveLevelsToStorage();
+            updateLevelNav();
+            currentLevelIndex = customLevels.length - 1;
+            updateLevelManagerList();
+            alert("已新增關卡至清單末尾！");
+        }
+
+        function updateLevelManagerList() {
+            const container = document.getElementById('full-level-list');
+            container.innerHTML = '';
+
+            customLevels.forEach((l, idx) => {
+                const item = document.createElement('div');
+                item.className = `flex justify-between items-center p-2 rounded-xl border transition ${idx === currentLevelIndex ? 'bg-purple-100 border-purple-300' : 'bg-white border-purple-50'}`;
+                item.innerHTML = `
+                    <span class="text-[10px] font-bold text-slate-300 truncate flex-1 mr-2">${idx + 1}. ${l.name}</span>
+                    <div class="flex gap-1">
+                        <button onclick="editLevelFromList(${idx})" class="text-[9px] bg-sky-600 text-white px-1.5 py-0.5 rounded">修改</button>
+                        <button onclick="moveLevel(${idx}, -1)" class="text-[9px] bg-slate-600 text-white px-1 py-0.5 rounded">↑</button>
+                        <button onclick="moveLevel(${idx}, 1)" class="text-[9px] bg-slate-600 text-white px-1 py-0.5 rounded">↓</button>
+                        <button onclick="deleteLevel(${idx})" class="text-[9px] bg-red-600 text-white px-1.5 py-0.5 rounded">刪除</button>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function editLevelFromList(idx) {
+            currentLevelIndex = idx;
+            tempLevel = JSON.parse(JSON.stringify(customLevels[idx]));
+            initBoard();
+            updateCardLimits();
+            updateEditorFields();
+        }
+
+        function deleteLevel(idx) {
+            if (customLevels.length <= 1) {
+                alert("至少需保留一個關卡！");
+                return;
+            }
+            if (!confirm(`確定要刪除「${customLevels[idx].name}」嗎？`)) return;
+            customLevels.splice(idx, 1);
+            saveLevelsToStorage();
+            if (currentLevelIndex >= customLevels.length) currentLevelIndex = customLevels.length - 1;
+            editLevelFromList(currentLevelIndex);
+            updateLevelNav();
+        }
+
+        function moveLevel(idx, dir) {
+            const newIdx = idx + dir;
+            if (newIdx < 0 || newIdx >= customLevels.length) return;
+            const temp = customLevels[idx];
+            customLevels[idx] = customLevels[newIdx];
+            customLevels[newIdx] = temp;
+            saveLevelsToStorage();
+            if (currentLevelIndex === idx) currentLevelIndex = newIdx;
+            else if (currentLevelIndex === newIdx) currentLevelIndex = idx;
+            updateLevelManagerList();
+            updateLevelNav();
+        }
+
+        function exportAllLevels() {
+            const data = JSON.stringify(customLevels, null, 2);
+            const blob = new Blob([data], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            const timestamp = new Date().toISOString().split('T')[0];
+            link.href = url;
+            link.download = `pirate_game_levels_${timestamp}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
+        function importAllLevels() {
+            if (!confirm("匯入將會覆蓋目前所有的關卡，確定要繼續嗎？")) return;
+
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+
+            input.onchange = e => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = event => {
+                    try {
+                        const data = JSON.parse(event.target.result);
+                        if (Array.isArray(data)) {
+                            customLevels = data;
+                            saveLevelsToStorage();
+                            currentLevelIndex = 0;
+                            loadLevels();
+                            initBoard();
+                            updateLevelNav();
+                            updateLevelManagerList();
+                            alert("檔案匯入成功！已更新所有關卡。");
+                        } else {
+                            alert("格式錯誤，請確保檔案內容是 JSON 陣列。");
+                        }
+                    } catch (err) {
+                        alert("JSON 解析失敗，請檢查檔案內容是否正確。");
+                    }
+                };
+                reader.readAsText(file);
+            };
+
+            input.click();
+        }
+
+        function launchCelebration() {
+            const emojis = ['✨', '💫', '⭐', '🎈', '🎉', '🚢', '💰'];
+            for (let i = 0; i < 40; i++) {
+                const confetto = document.createElement('div');
+                confetto.innerText = emojis[Math.floor(Math.random() * emojis.length)];
+                confetto.style.position = 'fixed';
+                confetto.style.left = Math.random() * 100 + 'vw';
+                confetto.style.top = '105vh';
+                confetto.style.fontSize = (Math.random() * 20 + 20) + 'px';
+                confetto.style.zIndex = '200';
+                confetto.style.pointerEvents = 'none';
+                confetto.style.transition = `all ${Math.random() * 3 + 2}s cubic-bezier(0.1, 0.5, 0.2, 1)`;
+                document.body.appendChild(confetto);
+
+                setTimeout(() => {
+                    const destX = (Math.random() - 0.5) * 50;
+                    confetto.style.transform = `translate(${destX}vw, -120vh) rotate(${Math.random() * 720 - 360}deg)`;
+                    confetto.style.opacity = '0';
+                }, 50);
+                setTimeout(() => confetto.remove(), 5000);
+            }
+        }
+
+        function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+        function showModal(title, desc, icon, btn, showCapture = false) {
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-desc').innerText = desc;
+            document.getElementById('modal-icon').innerText = icon;
+            document.getElementById('modal-btn').innerText = btn;
+            document.getElementById('modal').classList.remove('hidden');
+        }
+
+        async function captureScreen() {
+            const gameArea = document.body; // 擷取整個網頁畫面
+            if (!gameArea) return;
+
+            // 等待一下下讓動畫停止與渲染穩定
+            await sleep(500);
+
+            try {
+                const dataUrl = await domtoimage.toPng(gameArea, {
+                    bgcolor: '#f0f9ff',
+                    quality: 1.0
+                });
+
+                const link = document.createElement('a');
+                const timestamp = new Date().toLocaleTimeString().replace(/:/g, '-');
+                link.download = `找到寶藏吧_第${currentLevelIndex + 1}關_${timestamp}.png`;
+                link.href = dataUrl;
+                link.click();
+            } catch (err) {
+                console.error('截圖失敗:', err);
+            }
+        }
+
+        async function manualCapture() {
+            const modal = document.getElementById('modal');
+            modal.classList.add('hidden'); // 暫時隱藏彈窗以獲得乾淨截圖
+            await sleep(100);
+            await captureScreen();
+            modal.classList.remove('hidden'); // 截圖完成後恢復彈窗
+        }
+
+        function startTimer() {
+            levelStartTime = Date.now();
+            document.getElementById('timer-display').classList.remove('hidden');
+            if (gameTimerInterval) clearInterval(gameTimerInterval);
+            gameTimerInterval = setInterval(updateTimerUI, 1000);
+            updateTimerUI();
+        }
+
+        function stopTimer() {
+            if (gameTimerInterval) clearInterval(gameTimerInterval);
+        }
+
+        function updateTimerUI() {
+            const elapsed = Math.floor((Date.now() - levelStartTime) / 1000);
+            const m = Math.floor(elapsed / 60).toString().padStart(2, '0');
+            const s = (elapsed % 60).toString().padStart(2, '0');
+            document.getElementById('timer-display').innerText = `⏱️ ${m}:${s}`;
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.add('hidden');
+            if (hasWonCurrentRun && currentLevelIndex < 4) switchLevel(currentLevelIndex + 1);
+            else { shipState = { x: startPos.x, y: startPos.y, dir: 0 }; updateShipPosition(); }
+            hasWonCurrentRun = false;
+        }
+
+        window.onload = () => {
+            // 嘗試在載入時就解鎖 AudioContext
+            document.body.addEventListener('click', () => { if (audioCtx.state === 'suspended') audioCtx.resume(); }, { once: true });
+        };
+    </script>
+</body>
+
+</html>
