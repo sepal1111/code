@@ -260,7 +260,7 @@
                 <div class="relative z-10">
                     <span class="text-5xl mb-4 block">🏆</span>
                     <h2 class="text-2xl font-bold mb-2">內建闖關</h2>
-                    <p class="text-white/80 text-sm">挑戰程式碼內建的 5 個精選關卡，學習邏輯基礎。</p>
+                    <p class="text-white/80 text-sm">挑戰程式碼內建的 6 個精選關卡，學習邏輯基礎。</p>
                 </div>
                 <div class="absolute -right-4 -bottom-4 text-8xl opacity-10 group-hover:rotate-12 transition">🧭</div>
             </button>
@@ -346,6 +346,8 @@
                     class="lvl-btn lvl-locked px-3 py-1 rounded-full text-xs font-bold transition">第四關 🔒</button>
                 <button onclick="switchLevel(4)" id="lvl-btn-4"
                     class="lvl-btn lvl-locked px-3 py-1 rounded-full text-xs font-bold transition">第五關 🔒</button>
+                <button onclick="switchLevel(5)" id="lvl-btn-5"
+                    class="lvl-btn lvl-locked px-3 py-1 rounded-full text-xs font-bold transition">第六關 🔒</button>
             </div>
             <p id="level-desc"
                 class="text-sky-600 mt-3 font-bold text-sm bg-white/90 px-5 py-1.5 rounded-full border border-sky-100 shadow-sm inline-block mx-2 whitespace-nowrap w-max">
@@ -935,7 +937,7 @@
             document.querySelectorAll('.lvl-btn').forEach((btn, idx) => {
                 const isLocked = idx > unlockedLevel;
                 btn.classList.toggle('lvl-locked', isLocked);
-                btn.innerHTML = `第${['一', '二', '三', '四', '五'][idx]}關${isLocked ? ' 🔒' : ''}`;
+                btn.innerHTML = `第${['一', '二', '三', '四', '五', '六'][idx]}關${isLocked ? ' 🔒' : ''}`;
                 btn.className = `lvl-btn px-3 py-1 rounded-full text-xs font-bold transition ${idx === index ? 'bg-sky-600 text-white shadow-lg scale-105' : 'bg-gray-100 text-gray-500'}`;
             });
 
@@ -1182,13 +1184,13 @@
                 hasWonCurrentRun = true;
                 playSfx(880, 'sine', 0.2, 0.05);
                 setTimeout(() => playSfx(1046, 'sine', 0.3, 0.05), 100);
-                if (currentLevelIndex === unlockedLevel && unlockedLevel < 4) unlockedLevel++;
+                if (currentLevelIndex === unlockedLevel && unlockedLevel < 5) unlockedLevel++;
 
                 stopTimer();
                 const finalTime = document.getElementById('timer-display').innerText;
                 await captureScreen();
 
-                if (currentLevelIndex === 4) {
+                if (currentLevelIndex === 5) {
                     isGameCleared = true;
                     localStorage.setItem('pirate_game_cleared', 'true');
                     document.getElementById('master-badge').classList.remove('hidden');
