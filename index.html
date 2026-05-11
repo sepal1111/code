@@ -315,6 +315,9 @@
             <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4 px-2">
                 <h1 class="text-2xl font-bold text-sky-800">找到寶藏吧！邏輯遊戲</h1>
                 <div class="flex items-center gap-3">
+                    <button onclick="showHelp()"
+                        class="bg-blue-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-sm hover:bg-blue-600 transition flex items-center gap-1">💡
+                        玩法說明</button>
                     <button onclick="toggleEditor()"
                         class="bg-purple-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-sm hover:bg-purple-700 transition">🛠️
                         地圖編輯</button>
@@ -464,7 +467,13 @@
                 <div class="h-6 w-px bg-slate-600"></div>
                 <h2 class="text-xl font-bold text-white flex items-center gap-2">🛠️ 關卡編輯器</h2>
             </div>
-            <div class="flex gap-2">
+            <div class="flex gap-2 items-center">
+                <button onclick="showHelp()"
+                    class="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-blue-700 transition flex items-center gap-1">💡
+                    說明</button>
+                <button onclick="clearAllLevels()"
+                    class="bg-red-600 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-red-700 transition">🗑️
+                    清除全部</button>
                 <button onclick="exportAllLevels()"
                     class="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-blue-700 transition">📤
                     匯出資料包</button>
@@ -504,9 +513,6 @@
                     <button onclick="setEditTool('portal')"
                         class="edit-tool w-12 h-12 flex flex-col items-center justify-center rounded-xl bg-slate-700 border-2 border-transparent hover:bg-slate-600 transition"
                         data-tool="portal" title="傳送門"><span class="text-xl">🌀</span></button>
-                    <button onclick="setEditTool('empty')"
-                        class="edit-tool w-12 h-12 flex flex-col items-center justify-center rounded-xl bg-slate-700 border-2 border-transparent hover:bg-slate-600 transition"
-                        data-tool="empty" title="橡皮擦"><span class="text-xl">🧹</span></button>
                 </div>
             </div>
 
@@ -554,28 +560,9 @@
                     </div>
                 </section>
 
-                <section id="pirate-settings" class="hidden bg-red-900/20 border border-red-900/50 p-3 rounded-xl">
-                    <h3 class="text-red-400 text-[10px] font-bold uppercase tracking-wider mb-2">🏴‍☠️ 海盜路徑設定</h3>
-                    <div class="space-y-2">
-                        <div class="flex items-center justify-between">
-                            <span class="text-[10px] text-red-200">移動軸</span>
-                            <select id="pirate-axis" class="bg-slate-700 text-white text-[10px] rounded px-1">
-                                <option value="x">水平 (X)</option>
-                                <option value="y">垂直 (Y)</option>
-                            </select>
-                        </div>
-                        <div class="flex items-center justify-between">
-                            <span class="text-[10px] text-red-200">巡邏範圍</span>
-                            <div class="flex items-center gap-1">
-                                <input type="number" id="pirate-range-min"
-                                    class="w-8 bg-slate-700 text-white text-[10px] rounded px-1" value="0">
-                                <span class="text-slate-400">~</span>
-                                <input type="number" id="pirate-range-max"
-                                    class="w-8 bg-slate-700 text-white text-[10px] rounded px-1" value="8">
-                            </div>
-                        </div>
-                    </div>
-                </section>
+
+
+
 
                 <div class="mt-auto pt-4 border-t border-slate-700">
                     <button onclick="saveCurrentLevel()"
@@ -602,12 +589,197 @@
             <div id="modal-icon" class="text-7xl mb-4">🏆</div>
             <h2 id="modal-title" class="text-2xl font-bold mb-2 text-gray-800">任務達成！</h2>
             <p id="modal-desc" class="text-gray-600 mb-8">成功的抵達了終點。</p>
-            <button onclick="manualCapture()"
+            <button id="modal-capture-btn" onclick="manualCapture()"
                 class="w-full bg-amber-500 text-white py-3 rounded-xl font-bold hover:bg-amber-600 transition mb-3 flex items-center justify-center gap-2">
                 <span>📷</span> 擷取過關畫面
             </button>
             <button id="modal-btn" onclick="closeModal()"
                 class="w-full bg-sky-600 text-white py-3 rounded-xl font-bold hover:bg-sky-700 transition">確定</button>
+        </div>
+    </div>
+
+    <!-- 確認視窗 -->
+    <div id="confirm-modal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-[120] p-4">
+        <div class="bg-white p-8 rounded-3xl max-w-sm w-full text-center shadow-2xl border-t-8 border-red-500">
+            <div id="confirm-icon" class="text-7xl mb-4">⚠️</div>
+            <h2 id="confirm-title" class="text-2xl font-bold mb-2 text-gray-800">警告</h2>
+            <p id="confirm-desc" class="text-gray-600 mb-8">確定要執行此操作嗎？</p>
+            <div class="flex gap-4">
+                <button onclick="closeConfirmModal()"
+                    class="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-300 transition">取消</button>
+                <button id="confirm-ok-btn" onclick="executeConfirm()"
+                    class="flex-1 bg-red-600 text-white py-3 rounded-xl font-bold hover:bg-red-700 transition">確定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 漩渦顏色選擇視窗 -->
+    <div id="portal-color-modal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-[130] p-4">
+        <div class="bg-white p-6 rounded-3xl max-w-xs w-full text-center shadow-2xl border-t-8 border-indigo-500">
+            <div class="text-5xl mb-3">🌀</div>
+            <h2 class="text-xl font-bold mb-4 text-gray-800">選擇漩渦顏色</h2>
+            <div class="grid grid-cols-2 gap-3 mb-6">
+                <button onclick="selectPortalColor('blue')" class="bg-blue-50 hover:bg-blue-100 text-blue-800 py-2 rounded-xl font-bold border border-blue-200 transition">🔵 藍色</button>
+                <button onclick="selectPortalColor('red')" class="bg-red-50 hover:bg-red-100 text-red-800 py-2 rounded-xl font-bold border border-red-200 transition">🔴 紅色</button>
+                <button onclick="selectPortalColor('green')" class="bg-green-50 hover:bg-green-100 text-green-800 py-2 rounded-xl font-bold border border-green-200 transition">🟢 綠色</button>
+                <button onclick="selectPortalColor('yellow')" class="bg-yellow-50 hover:bg-yellow-100 text-yellow-800 py-2 rounded-xl font-bold border border-yellow-200 transition">🟡 黃色</button>
+                <button onclick="selectPortalColor('purple')" class="bg-purple-50 hover:bg-purple-100 text-purple-800 py-2 rounded-xl font-bold border border-purple-200 transition col-span-2">🟣 紫色</button>
+            </div>
+            <button onclick="closePortalColorModal()" class="w-full bg-gray-200 text-gray-700 py-2 rounded-xl font-bold hover:bg-gray-300 transition">取消</button>
+        </div>
+    </div>
+
+    <!-- 海盜設定視窗 -->
+    <div id="pirate-settings-modal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-[130] p-4">
+        <div class="bg-white p-6 rounded-3xl max-w-xs w-full text-center shadow-2xl border-t-8 border-red-500">
+            <div class="text-5xl mb-3">🏴‍☠️</div>
+            <h2 class="text-xl font-bold mb-4 text-gray-800">海盜巡邏設定</h2>
+            
+            <div class="text-left mb-4">
+                <label class="text-sm font-bold text-gray-700 block mb-2">移動方向</label>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="setPirateTempDir('up')" id="btn-pirate-dir-up" class="pirate-dir-btn bg-gray-100 hover:bg-red-50 text-gray-700 py-2 rounded-xl font-bold border-2 border-gray-200 transition">⬆️ 往上</button>
+                    <button onclick="setPirateTempDir('down')" id="btn-pirate-dir-down" class="pirate-dir-btn bg-gray-100 hover:bg-red-50 text-gray-700 py-2 rounded-xl font-bold border-2 border-gray-200 transition">⬇️ 往下</button>
+                    <button onclick="setPirateTempDir('left')" id="btn-pirate-dir-left" class="pirate-dir-btn bg-gray-100 hover:bg-red-50 text-gray-700 py-2 rounded-xl font-bold border-2 border-gray-200 transition">⬅️ 往左</button>
+                    <button onclick="setPirateTempDir('right')" id="btn-pirate-dir-right" class="pirate-dir-btn bg-red-50 hover:bg-red-100 text-red-700 py-2 rounded-xl font-bold border-2 border-red-500 transition">➡️ 往右</button>
+                </div>
+            </div>
+
+            <div class="text-left mb-6">
+                <label class="text-sm font-bold text-gray-700 block mb-2">單向距離 (格)</label>
+                <input type="number" id="pirate-temp-dist" value="3" min="1" max="8" class="w-full border-2 border-gray-200 rounded-xl p-2 text-center font-bold focus:border-red-400 outline-none">
+            </div>
+
+            <div class="flex gap-3">
+                <button onclick="closePirateModal()" class="flex-1 bg-gray-200 text-gray-700 py-2 rounded-xl font-bold hover:bg-gray-300 transition">取消</button>
+                <button onclick="confirmPirateSettings()" class="flex-1 bg-red-600 text-white py-2 rounded-xl font-bold hover:bg-red-700 transition">確定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 玩法說明視窗 -->
+    <div id="help-modal" class="fixed inset-0 bg-black/70 hidden flex items-center justify-center z-[150] p-4 text-left">
+        <div class="bg-white p-6 rounded-3xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl border-t-8 border-blue-500">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold text-gray-800 flex items-center gap-2">💡 玩法說明</h2>
+                <button onclick="closeHelp()" class="text-gray-400 hover:text-gray-600 text-2xl">✕</button>
+            </div>
+            
+            <div class="overflow-y-auto pr-2 space-y-6">
+                <!-- 指令積木 -->
+                <section>
+                    <h3 class="text-lg font-bold text-blue-600 border-b-2 border-blue-100 pb-1 mb-3">🧩 指令積木</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div class="flex items-center gap-3 p-2 bg-slate-50 rounded-xl">
+                            <span class="text-2xl bg-blue-100 p-2 rounded-lg">⬆️</span>
+                            <div>
+                                <div class="font-bold text-sm">前進</div>
+                                <div class="text-[10px] text-gray-500">船隻依目前朝向往前移動一格。</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 p-2 bg-slate-50 rounded-xl">
+                            <span class="text-2xl bg-blue-100 p-2 rounded-lg">⬇️</span>
+                            <div>
+                                <div class="font-bold text-sm">後退</div>
+                                <div class="text-[10px] text-gray-500">船隻依目前朝向往後退回一格。</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 p-2 bg-slate-50 rounded-xl">
+                            <span class="text-2xl bg-indigo-100 p-2 rounded-lg">↪️</span>
+                            <div>
+                                <div class="font-bold text-sm">左轉</div>
+                                <div class="text-[10px] text-gray-500">船隻原地向左旋轉 90 度。</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 p-2 bg-slate-50 rounded-xl">
+                            <span class="text-2xl bg-indigo-100 p-2 rounded-lg">↩️</span>
+                            <div>
+                                <div class="font-bold text-sm">右轉</div>
+                                <div class="text-[10px] text-gray-500">船隻原地向右旋轉 90 度。</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 p-2 bg-slate-50 rounded-xl">
+                            <span class="text-2xl bg-red-100 p-2 rounded-lg">💣</span>
+                            <div>
+                                <div class="font-bold text-sm">炸彈</div>
+                                <div class="text-[10px] text-gray-500">炸毀船隻正前方的一塊「浮木」。</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 p-2 bg-slate-50 rounded-xl">
+                            <span class="text-2xl bg-amber-100 p-2 rounded-lg">🔄</span>
+                            <div>
+                                <div class="font-bold text-sm">重複次數</div>
+                                <div class="text-[10px] text-gray-500">將前一個指令重複執行指定的次數。</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 地形與物件 -->
+                <section>
+                    <h3 class="text-lg font-bold text-emerald-600 border-b-2 border-emerald-100 pb-1 mb-3">🏝️ 地形與物件</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div class="flex items-center gap-3 p-2 bg-slate-50 rounded-xl">
+                            <span class="text-2xl bg-emerald-100 p-2 rounded-lg">🚩</span>
+                            <div>
+                                <div class="font-bold text-sm">起點</div>
+                                <div class="text-[10px] text-gray-500">船隻開始航行的地方。</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 p-2 bg-slate-50 rounded-xl">
+                            <span class="text-2xl bg-yellow-100 p-2 rounded-lg">💰</span>
+                            <div>
+                                <div class="font-bold text-sm">終點 (寶藏)</div>
+                                <div class="text-[10px] text-gray-500">目的地。執行完所有指令後停在此格即過關。</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 p-2 bg-slate-50 rounded-xl">
+                            <span class="text-2xl bg-slate-200 p-2 rounded-lg">🪨</span>
+                            <div>
+                                <div class="font-bold text-sm">礁石</div>
+                                <div class="text-[10px] text-gray-500">障礙物。撞上礁石或超出地圖邊界會失敗。</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 p-2 bg-slate-50 rounded-xl">
+                            <span class="text-2xl bg-cyan-100 p-2 rounded-lg">🌀</span>
+                            <div>
+                                <div class="font-bold text-sm">傳送門</div>
+                                <div class="text-[10px] text-gray-500">相同顏色的傳送門會成對運作，進入即傳送。</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 p-2 bg-slate-50 rounded-xl">
+                            <span class="text-2xl bg-orange-100 p-2 rounded-lg">🪵</span>
+                            <div>
+                                <div class="font-bold text-sm">浮木</div>
+                                <div class="text-[10px] text-gray-500">阻礙前進。需使用「炸彈」清除才能通過。</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 p-2 bg-slate-50 rounded-xl">
+                            <span class="text-2xl bg-amber-100 p-2 rounded-lg">🔑</span>
+                            <div>
+                                <div class="font-bold text-sm">鑰匙</div>
+                                <div class="text-[10px] text-gray-500">撿起鑰匙後，才能開啟地圖上的門。</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 p-2 bg-slate-50 rounded-xl">
+                            <span class="text-2xl bg-yellow-600/10 p-2 rounded-lg">🚪</span>
+                            <div>
+                                <div class="font-bold text-sm">門</div>
+                                <div class="text-[10px] text-gray-500">需持有鑰匙才能通過，通過後門會消失。</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 p-2 bg-slate-50 rounded-xl">
+                            <span class="text-2xl bg-red-100 p-2 rounded-lg">🏴‍☠️</span>
+                            <div>
+                                <div class="font-bold text-sm">海盜</div>
+                                <div class="text-[10px] text-gray-500">會在線上來回巡邏，若船隻與海盜重疊即失敗。</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <button onclick="closeHelp()" class="mt-6 w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition shadow-lg">開始遊戲</button>
         </div>
     </div>
 
@@ -740,14 +912,34 @@
         function selectMode(mode) {
             gameMode = mode;
             document.getElementById('mode-screen').classList.add('hidden');
-            document.getElementById('selection-screen').classList.remove('hidden');
-            playSfx(880);
 
             // 根據模式決定是否顯示編輯器按鈕
             const editBtn = document.querySelector('button[onclick="toggleEditor()"]');
             if (editBtn) {
                 editBtn.style.display = (mode === 'custom') ? 'inline-block' : 'none';
             }
+
+            if (mode === 'custom') {
+                const saved = localStorage.getItem('pirate_game_custom_levels');
+                let hasLevels = false;
+                if (saved) {
+                    try {
+                        const parsed = JSON.parse(saved);
+                        if (parsed && parsed.length > 0) hasLevels = true;
+                    } catch(e) {}
+                }
+                
+                if (!hasLevels) {
+                    playSfx(880);
+                    // 如果沒有關卡存在，直接初始化並進入地圖編輯模式
+                    startGame();
+                    toggleEditor();
+                    return;
+                }
+            }
+
+            document.getElementById('selection-screen').classList.remove('hidden');
+            playSfx(880);
         }
 
         function backToMode() {
@@ -814,7 +1006,7 @@
                 } else {
                     customLevels = [JSON.parse(JSON.stringify(TEMPLATE_LEVELS[0]))];
                     customLevels[0].name = "我的自訂關卡";
-                    saveLevelsToStorage();
+                    // 移除自動儲存，讓使用者自行決定是否要儲存
                 }
                 unlockedLevel = customLevels.length; // 自訂模式不鎖關
             }
@@ -905,7 +1097,13 @@
             } else if ((lvl.obstacles || []).some(o => o.x === x && o.y === y)) {
                 layer.innerHTML = '<span class="text-xl">🪨</span>';
             } else if ((lvl.portals || []).some(p => p.x === x && p.y === y)) {
-                layer.innerHTML = '<span class="text-xl">🌀</span>';
+                const p = lvl.portals.find(p => p.x === x && p.y === y);
+                if (p.color) {
+                    const colors = { 'blue': '🔵', 'red': '🔴', 'green': '🟢', 'yellow': '🟡', 'purple': '🟣' };
+                    layer.innerHTML = `<span class="text-xl relative">🌀<span class="absolute -top-1 -right-2 text-[10px]">${colors[p.color] || '🔵'}</span></span>`;
+                } else {
+                    layer.innerHTML = '<span class="text-xl relative">🌀<span class="absolute -top-1 -right-2 text-[10px]">⚙️</span></span>';
+                }
             } else if ((lvl.driftwoods || []).some(d => d.x === x && d.y === y)) {
                 layer.innerHTML = '<span class="text-xl">🪵</span>';
             } else if ((lvl.keys || []).some(k => k.x === x && k.y === y)) {
@@ -936,8 +1134,10 @@
             // 更新導覽列樣式
             document.querySelectorAll('.lvl-btn').forEach((btn, idx) => {
                 const isLocked = idx > unlockedLevel;
+                const lvl = customLevels[idx];
                 btn.classList.toggle('lvl-locked', isLocked);
-                btn.innerHTML = `第${['一', '二', '三', '四', '五', '六'][idx]}關${isLocked ? ' 🔒' : ''}`;
+                // 保持與 updateLevelNav 一致的名稱顯示邏輯
+                btn.innerText = (lvl.name.length > 5 ? lvl.name.substring(0, 4) + '..' : lvl.name) + (isLocked ? ' 🔒' : '');
                 btn.className = `lvl-btn px-3 py-1 rounded-full text-xs font-bold transition ${idx === index ? 'bg-sky-600 text-white shadow-lg scale-105' : 'bg-gray-100 text-gray-500'}`;
             });
 
@@ -1089,7 +1289,28 @@
             shipState = { x: startPos.x, y: startPos.y, dir: 0 };
 
             // 重設運行狀態
-            pirateList = (lvl.pirates || []).map(p => ({ ...p, currentPos: { x: p.x, y: p.y }, currentDir: p.dir || 1 }));
+            pirateList = (lvl.pirates || []).map(p => {
+                let dx = 0, dy = 0;
+                if (p.startDir === 'up') dy = -1;
+                else if (p.startDir === 'down') dy = 1;
+                else if (p.startDir === 'left') dx = -1;
+                else if (p.startDir === 'right') dx = 1;
+
+                if (!p.startDir) {
+                    if (p.axis === 'x') dx = 1;
+                    else dy = 1;
+                }
+
+                return { 
+                    originPos: { x: p.x, y: p.y },
+                    currentPos: { x: p.x, y: p.y }, 
+                    dx, dy,
+                    dist: p.dist || 99,
+                    stepsTaken: 0,
+                    movingForward: true,
+                    ignoreOrigin: !p.startDir
+                };
+            });
             driftwoodList = (lvl.driftwoods || []).map(d => ({ ...d }));
             hasKey = false;
 
@@ -1153,7 +1374,14 @@
                         const p = lvl.portals.find(p => p.x === shipState.x && p.y === shipState.y);
                         if (p) {
                             playSfx(1200, 'sine', 0.4, 0.05);
-                            shipState.x = p.targetX; shipState.y = p.targetY;
+                            if (p.color) {
+                                const target = lvl.portals.find(p2 => p2.color === p.color && (p2.x !== p.x || p2.y !== p.y));
+                                if (target) {
+                                    shipState.x = target.x; shipState.y = target.y;
+                                }
+                            } else {
+                                shipState.x = p.targetX; shipState.y = p.targetY;
+                            }
                             updateShipPosition();
                             await sleep(600);
                         }
@@ -1184,13 +1412,13 @@
                 hasWonCurrentRun = true;
                 playSfx(880, 'sine', 0.2, 0.05);
                 setTimeout(() => playSfx(1046, 'sine', 0.3, 0.05), 100);
-                if (currentLevelIndex === unlockedLevel && unlockedLevel < 5) unlockedLevel++;
+                if (currentLevelIndex === unlockedLevel && unlockedLevel < customLevels.length - 1) unlockedLevel++;
 
                 stopTimer();
                 const finalTime = document.getElementById('timer-display').innerText;
                 await captureScreen();
 
-                if (currentLevelIndex === 5) {
+                if (currentLevelIndex === customLevels.length - 1) {
                     isGameCleared = true;
                     localStorage.setItem('pirate_game_cleared', 'true');
                     document.getElementById('master-badge').classList.remove('hidden');
@@ -1241,25 +1469,39 @@
         }
 
         function movePirates() {
+            const lvl = isEditorMode ? tempLevel : customLevels[currentLevelIndex];
+            const size = lvl.gridSize || DEFAULT_GRID_SIZE;
+
             pirateList.forEach(p => {
                 let { x, y } = p.currentPos;
-                if (p.axis === 'x') {
-                    x += p.currentDir;
-                    if (x < p.range[0] || x > p.range[1]) {
-                        p.currentDir *= -1;
-                        x += p.currentDir * 2;
-                        // 再次檢查邊界
-                        x = Math.max(p.range[0], Math.min(p.range[1], x));
-                    }
-                } else {
-                    y += p.currentDir;
-                    if (y < p.range[0] || y > p.range[1]) {
-                        p.currentDir *= -1;
-                        y += p.currentDir * 2;
-                        y = Math.max(p.range[0], Math.min(p.range[1], y));
-                    }
+                
+                // If at origin and moving backward, force forward
+                if (!p.movingForward && p.stepsTaken <= 0 && !p.ignoreOrigin) {
+                    p.movingForward = true;
                 }
-                p.currentPos = { x, y };
+                // If at max dist and moving forward, force backward
+                if (p.movingForward && p.stepsTaken >= p.dist) {
+                    p.movingForward = false;
+                }
+
+                let currentDx = p.movingForward ? p.dx : -p.dx;
+                let currentDy = p.movingForward ? p.dy : -p.dy;
+
+                let nextX = x + currentDx;
+                let nextY = y + currentDy;
+
+                let isHit = false;
+                if (nextX < 0 || nextX >= size || nextY < 0 || nextY >= size) isHit = true;
+                else if ((lvl.obstacles || []).some(o => o.x === nextX && o.y === nextY)) isHit = true;
+                else if ((lvl.doors || []).some(d => d.x === nextX && d.y === nextY)) isHit = true;
+                else if (driftwoodList.some(d => d.x === nextX && d.y === nextY)) isHit = true;
+
+                if (isHit) {
+                    p.movingForward = !p.movingForward;
+                } else {
+                    p.currentPos = { x: nextX, y: nextY };
+                    p.stepsTaken += (p.movingForward ? 1 : -1);
+                }
             });
         }
 
@@ -1303,6 +1545,11 @@
             document.getElementById('selection-screen').classList.add('hidden');
             document.getElementById('editor-view').classList.remove('hidden');
 
+            bgm.pause();
+            isMusicOn = false;
+            const musicBtn = document.getElementById('music-btn');
+            if(musicBtn) musicBtn.innerText = '🎵';
+
             // 載入目前關卡
             tempLevel = JSON.parse(JSON.stringify(customLevels[currentLevelIndex]));
             if (!tempLevel.gridSize) tempLevel.gridSize = DEFAULT_GRID_SIZE;
@@ -1319,19 +1566,87 @@
             switchLevel(currentLevelIndex);
         }
 
+        let currentPortalColor = 'blue';
+
+        let currentPirateSettings = { dir: 'right', dist: 3 };
+        let tempPirateSettings = { dir: 'right', dist: 3 };
+
         function setEditTool(tool) {
+            if (tool === 'portal') {
+                document.getElementById('portal-color-modal').classList.remove('hidden');
+                return;
+            }
+            if (tool === 'pirate') {
+                tempPirateSettings = { ...currentPirateSettings };
+                setPirateTempDir(tempPirateSettings.dir);
+                document.getElementById('pirate-temp-dist').value = tempPirateSettings.dist;
+                document.getElementById('pirate-settings-modal').classList.remove('hidden');
+                return;
+            }
+            applyToolSelection(tool);
+        }
+
+        function setPirateTempDir(dir) {
+            tempPirateSettings.dir = dir;
+            document.querySelectorAll('.pirate-dir-btn').forEach(btn => {
+                btn.classList.remove('border-red-500', 'bg-red-50', 'text-red-700');
+                btn.classList.add('border-gray-200', 'bg-gray-100', 'text-gray-700');
+            });
+            const activeBtn = document.getElementById(`btn-pirate-dir-${dir}`);
+            if (activeBtn) {
+                activeBtn.classList.remove('border-gray-200', 'bg-gray-100', 'text-gray-700');
+                activeBtn.classList.add('border-red-500', 'bg-red-50', 'text-red-700');
+            }
+        }
+
+        function closePirateModal() {
+            document.getElementById('pirate-settings-modal').classList.add('hidden');
+        }
+
+        function confirmPirateSettings() {
+            const distInput = document.getElementById('pirate-temp-dist').value;
+            const dist = Math.max(1, parseInt(distInput) || 3);
+            currentPirateSettings = { dir: tempPirateSettings.dir, dist };
+            closePirateModal();
+            applyToolSelection('pirate');
+        }
+
+        function selectPortalColor(color) {
+            currentPortalColor = color;
+            closePortalColorModal();
+            applyToolSelection('portal');
+            
+            const btn = document.querySelector('button[data-tool="portal"]');
+            if (btn) {
+                const colors = { 'blue': '🔵', 'red': '🔴', 'green': '🟢', 'yellow': '🟡', 'purple': '🟣' };
+                btn.innerHTML = `<span class="text-xl relative">🌀<span class="absolute -top-1 -right-2 text-[10px] drop-shadow-md">${colors[color]}</span></span>`;
+            }
+        }
+
+        function closePortalColorModal() {
+            document.getElementById('portal-color-modal').classList.add('hidden');
+        }
+
+        function applyToolSelection(tool) {
             currentEditTool = tool;
             document.querySelectorAll('.edit-tool').forEach(btn => {
                 btn.classList.toggle('active-tool', btn.getAttribute('data-tool') === tool);
                 btn.classList.toggle('ring-4', btn.getAttribute('data-tool') === tool);
                 btn.classList.toggle('ring-purple-400', btn.getAttribute('data-tool') === tool);
             });
-            document.getElementById('pirate-settings').classList.toggle('hidden', tool !== 'pirate');
         }
 
         function onCellClick(x, y) {
             if (!isEditorMode) return;
             const lvl = tempLevel;
+
+            let hasSameTool = false;
+            if (currentEditTool === 'obstacle' && (lvl.obstacles || []).some(o => o.x === x && o.y === y)) hasSameTool = true;
+            else if (currentEditTool === 'driftwood' && (lvl.driftwoods || []).some(d => d.x === x && d.y === y)) hasSameTool = true;
+            else if (currentEditTool === 'key' && (lvl.keys || []).some(k => k.x === x && k.y === y)) hasSameTool = true;
+            else if (currentEditTool === 'door' && (lvl.doors || []).some(d => d.x === x && d.y === y)) hasSameTool = true;
+            else if (currentEditTool === 'pirate' && (lvl.pirates || []).some(p => p.x === x && p.y === y)) hasSameTool = true;
+            else if (currentEditTool === 'portal' && (lvl.portals || []).some(p => p.x === x && p.y === y)) hasSameTool = true;
 
             // 清除該格既有物件 (除了起終點)
             lvl.obstacles = (lvl.obstacles || []).filter(o => o.x !== x || o.y !== y);
@@ -1341,27 +1656,34 @@
             lvl.doors = (lvl.doors || []).filter(d => d.x !== x || d.y !== y);
             lvl.pirates = (lvl.pirates || []).filter(p => p.x !== x || p.y !== y);
 
-            if (currentEditTool === 'start') {
-                lvl.startPos = { x, y };
-            } else if (currentEditTool === 'end') {
-                lvl.endPos = { x, y };
-            } else if (currentEditTool === 'obstacle') {
-                lvl.obstacles.push({ x, y });
-            } else if (currentEditTool === 'driftwood') {
-                lvl.driftwoods.push({ x, y });
-            } else if (currentEditTool === 'key') {
-                lvl.keys.push({ x, y });
-            } else if (currentEditTool === 'door') {
-                lvl.doors.push({ x, y });
-            } else if (currentEditTool === 'pirate') {
-                const axis = document.getElementById('pirate-axis').value;
-                const min = parseInt(document.getElementById('pirate-range-min').value);
-                const max = parseInt(document.getElementById('pirate-range-max').value);
-                lvl.pirates.push({ x, y, axis, range: [min, max], dir: 1 });
-            } else if (currentEditTool === 'portal') {
-                const tx = prompt("傳送終點 X (0-8):", "0");
-                const ty = prompt("傳送終點 Y (0-8):", "0");
-                lvl.portals.push({ x, y, targetX: parseInt(tx), targetY: parseInt(ty) });
+            if (!hasSameTool) {
+                if (currentEditTool === 'start') {
+                    lvl.startPos = { x, y };
+                } else if (currentEditTool === 'end') {
+                    lvl.endPos = { x, y };
+                } else if (currentEditTool === 'obstacle') {
+                    lvl.obstacles.push({ x, y });
+                } else if (currentEditTool === 'driftwood') {
+                    lvl.driftwoods.push({ x, y });
+                } else if (currentEditTool === 'key') {
+                    lvl.keys.push({ x, y });
+                } else if (currentEditTool === 'door') {
+                    lvl.doors.push({ x, y });
+                } else if (currentEditTool === 'pirate') {
+                    lvl.pirates.push({ 
+                        x, y, 
+                        startDir: currentPirateSettings.dir, 
+                        dist: currentPirateSettings.dist 
+                    });
+                } else if (currentEditTool === 'portal') {
+                    const color = currentPortalColor;
+                    const existingSameColor = (lvl.portals || []).filter(p => p.color === color);
+                    if (existingSameColor.length >= 2) {
+                        showModal("無法放置", "該顏色的漩渦已經有一對（2個）了，請先刪除或是選擇其他顏色！", "⚠️", "確定");
+                    } else {
+                        lvl.portals.push({ x, y, color });
+                    }
+                }
             }
 
             initBoard();
@@ -1463,6 +1785,11 @@
         }
 
         function saveCurrentLevel() {
+            if (!tempLevel.name || tempLevel.name.trim() === '') {
+                showModal("提示", "關卡名稱不能為空白！請輸入關卡名稱。", "⚠️", "確定");
+                document.getElementById('edit-level-name').focus();
+                return;
+            }
             if (currentLevelIndex === -1) {
                 addNewLevel();
                 return;
@@ -1471,18 +1798,22 @@
             saveLevelsToStorage();
             updateLevelNav();
             updateLevelManagerList();
-            alert("關卡已更新儲存！");
+            showModal("儲存成功", "關卡已更新儲存！", "💾", "確定");
         }
 
         function addNewLevel() {
+            if (!tempLevel.name || tempLevel.name.trim() === '') {
+                showModal("提示", "關卡名稱不能為空白！請輸入關卡名稱。", "⚠️", "確定");
+                document.getElementById('edit-level-name').focus();
+                return;
+            }
             const newLvl = JSON.parse(JSON.stringify(tempLevel));
-            if (!newLvl.name) newLvl.name = "新關卡";
             customLevels.push(newLvl);
             saveLevelsToStorage();
             updateLevelNav();
             currentLevelIndex = customLevels.length - 1;
             updateLevelManagerList();
-            alert("已新增關卡至清單末尾！");
+            showModal("新增成功", "已新增關卡至清單末尾！", "➕", "確定");
         }
 
         function updateLevelManagerList() {
@@ -1515,15 +1846,16 @@
 
         function deleteLevel(idx) {
             if (customLevels.length <= 1) {
-                alert("至少需保留一個關卡！");
+                showModal("無法刪除", "至少需保留一個關卡！", "⚠️", "確定");
                 return;
             }
-            if (!confirm(`確定要刪除「${customLevels[idx].name}」嗎？`)) return;
-            customLevels.splice(idx, 1);
-            saveLevelsToStorage();
-            if (currentLevelIndex >= customLevels.length) currentLevelIndex = customLevels.length - 1;
-            editLevelFromList(currentLevelIndex);
-            updateLevelNav();
+            showConfirmModal("刪除關卡", `確定要刪除「${customLevels[idx].name}」嗎？`, "🗑️", () => {
+                customLevels.splice(idx, 1);
+                saveLevelsToStorage();
+                if (currentLevelIndex >= customLevels.length) currentLevelIndex = customLevels.length - 1;
+                editLevelFromList(currentLevelIndex);
+                updateLevelNav();
+            });
         }
 
         function moveLevel(idx, dir) {
@@ -1537,6 +1869,26 @@
             else if (currentLevelIndex === newIdx) currentLevelIndex = idx;
             updateLevelManagerList();
             updateLevelNav();
+        }
+
+        function clearAllLevels() {
+            showConfirmModal("清除所有關卡", "確定要清除所有自訂關卡嗎？此操作將無法復原！", "🗑️", () => {
+                customLevels = [JSON.parse(JSON.stringify(TEMPLATE_LEVELS[0]))];
+                customLevels[0].name = "我的自訂關卡";
+                
+                localStorage.removeItem('pirate_game_custom_levels');
+                
+                currentLevelIndex = 0;
+                tempLevel = JSON.parse(JSON.stringify(customLevels[0]));
+                
+                initBoard();
+                updateCardLimits();
+                updateEditorFields();
+                updateLevelNav();
+                updateLevelManagerList();
+                
+                showModal('清除完成', '所有自訂關卡已清除！', '✅', '確定');
+            });
         }
 
         function exportAllLevels() {
@@ -1554,40 +1906,40 @@
         }
 
         function importAllLevels() {
-            if (!confirm("匯入將會覆蓋目前所有的關卡，確定要繼續嗎？")) return;
+            showConfirmModal("匯入關卡", "匯入將會覆蓋目前所有的關卡，確定要繼續嗎？", "📥", () => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.json';
 
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = '.json';
+                input.onchange = e => {
+                    const file = e.target.files[0];
+                    if (!file) return;
 
-            input.onchange = e => {
-                const file = e.target.files[0];
-                if (!file) return;
-
-                const reader = new FileReader();
-                reader.onload = event => {
-                    try {
-                        const data = JSON.parse(event.target.result);
-                        if (Array.isArray(data)) {
-                            customLevels = data;
-                            saveLevelsToStorage();
-                            currentLevelIndex = 0;
-                            loadLevels();
-                            initBoard();
-                            updateLevelNav();
-                            updateLevelManagerList();
-                            alert("檔案匯入成功！已更新所有關卡。");
-                        } else {
-                            alert("格式錯誤，請確保檔案內容是 JSON 陣列。");
+                    const reader = new FileReader();
+                    reader.onload = event => {
+                        try {
+                            const data = JSON.parse(event.target.result);
+                            if (Array.isArray(data)) {
+                                customLevels = data;
+                                saveLevelsToStorage();
+                                currentLevelIndex = 0;
+                                loadLevels();
+                                initBoard();
+                                updateLevelNav();
+                                updateLevelManagerList();
+                                showModal("匯入成功", "檔案匯入成功！已更新所有關卡。", "✅", "確定");
+                            } else {
+                                showModal("匯入失敗", "格式錯誤，請確保檔案內容是 JSON 陣列。", "❌", "確定");
+                            }
+                        } catch (err) {
+                            showModal("匯入失敗", "JSON 解析失敗，請檢查檔案內容是否正確。", "❌", "確定");
                         }
-                    } catch (err) {
-                        alert("JSON 解析失敗，請檢查檔案內容是否正確。");
-                    }
+                    };
+                    reader.readAsText(file);
                 };
-                reader.readAsText(file);
-            };
 
-            input.click();
+                input.click();
+            });
         }
 
         function launchCelebration() {
@@ -1619,7 +1971,39 @@
             document.getElementById('modal-desc').innerText = desc;
             document.getElementById('modal-icon').innerText = icon;
             document.getElementById('modal-btn').innerText = btn;
+            const captureBtn = document.getElementById('modal-capture-btn');
+            if (captureBtn) captureBtn.style.display = showCapture ? 'flex' : 'none';
             document.getElementById('modal').classList.remove('hidden');
+        }
+
+        let confirmCallback = null;
+
+        function showConfirmModal(title, desc, icon, callback) {
+            document.getElementById('confirm-title').innerText = title;
+            document.getElementById('confirm-desc').innerText = desc;
+            document.getElementById('confirm-icon').innerText = icon;
+            confirmCallback = callback;
+            document.getElementById('confirm-modal').classList.remove('hidden');
+        }
+
+        function closeConfirmModal() {
+            document.getElementById('confirm-modal').classList.add('hidden');
+            confirmCallback = null;
+        }
+
+        function executeConfirm() {
+            if (confirmCallback) confirmCallback();
+            closeConfirmModal();
+        }
+
+        function showHelp() {
+            document.getElementById('help-modal').classList.remove('hidden');
+            playSfx(600);
+        }
+
+        function closeHelp() {
+            document.getElementById('help-modal').classList.add('hidden');
+            playSfx(440);
         }
 
         async function captureScreen() {
@@ -1674,8 +2058,12 @@
 
         function closeModal() {
             document.getElementById('modal').classList.add('hidden');
-            if (hasWonCurrentRun && currentLevelIndex < 4) switchLevel(currentLevelIndex + 1);
-            else { shipState = { x: startPos.x, y: startPos.y, dir: 0 }; updateShipPosition(); }
+            if (hasWonCurrentRun && currentLevelIndex < customLevels.length - 1) {
+                switchLevel(currentLevelIndex + 1);
+            } else {
+                shipState = { x: startPos.x, y: startPos.y, dir: 0 };
+                updateShipPosition();
+            }
             hasWonCurrentRun = false;
         }
 
