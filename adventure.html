@@ -223,6 +223,11 @@
                             oninput="adjustVolume(this.value)" class="w-16 sm:w-24">
                     </div>
                     <div class="w-[1px] h-8 bg-gray-100 mx-1"></div>
+                    <button onclick="toggleAutoCapture()" id="capture-toggle-btn" 
+                        class="px-3 py-1 bg-amber-50 hover:bg-amber-100 text-amber-600 text-xs font-bold rounded-lg transition border border-amber-200 flex items-center gap-1">
+                        <span id="capture-status-icon">📸</span> <span id="capture-status-text">自動擷取: ON</span>
+                    </button>
+                    <div class="w-[1px] h-8 bg-gray-100 mx-1"></div>
                     <button onclick="goHome()" class="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-lg transition">🏠 首頁</button>
                 </div>
             </div>
@@ -354,6 +359,7 @@
         let isGameCleared = localStorage.getItem('pirate_game_cleared') === 'true';
         let levelStartTime = 0;
         let gameTimerInterval = null;
+        let isAutoCapture = localStorage.getItem('pirate_auto_capture') !== 'false';
 
         const playlist = ['bgm1.mp3', 'bgm2.mp3', 'bgm3.mp3', 'bgm4.mp3', 'bgm5.mp3'];
         const bgm = new Audio();
@@ -414,6 +420,29 @@
         }
 
         function adjustVolume(val) { bgm.volume = val; }
+
+        function toggleAutoCapture() {
+            isAutoCapture = !isAutoCapture;
+            localStorage.setItem('pirate_auto_capture', isAutoCapture);
+            updateCaptureUI();
+            playSfx(isAutoCapture ? 800 : 400);
+        }
+
+        function updateCaptureUI() {
+            const btn = document.getElementById('capture-toggle-btn');
+            const icon = document.getElementById('capture-status-icon');
+            const text = document.getElementById('capture-status-text');
+            
+            if (isAutoCapture) {
+                btn.className = "px-3 py-1 bg-amber-50 hover:bg-amber-100 text-amber-600 text-xs font-bold rounded-lg transition border border-amber-200 flex items-center gap-1";
+                text.innerText = "自動擷取: ON";
+                icon.innerText = "📸";
+            } else {
+                btn.className = "px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-400 text-xs font-bold rounded-lg transition border border-gray-200 flex items-center gap-1";
+                text.innerText = "自動擷取: OFF";
+                icon.innerText = "🚫";
+            }
+        }
 
         function goHome() {
             if (isRunning) return;
@@ -641,7 +670,7 @@
                 }
                 stopTimer();
                 const finalTime = document.getElementById('timer-display').innerText;
-                await captureScreen();
+                if (isAutoCapture) await captureScreen();
                 if (currentLevelIndex === customLevels.length - 1) {
                     isGameCleared = true; localStorage.setItem('pirate_game_cleared', 'true');
                     document.getElementById('master-badge').classList.remove('hidden');
@@ -758,6 +787,7 @@
         window.onload = () => {
             if (audioCtx.state === 'suspended') audioCtx.resume();
             isMusicOn = true; toggleMusic();
+            updateCaptureUI();
             switchLevel(currentLevelIndex);
         };
     </script>
