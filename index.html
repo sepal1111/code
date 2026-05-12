@@ -1386,26 +1386,14 @@
                             await sleep(600);
                         }
                     }
-                    if (shipState.x === endPos.x && shipState.y === endPos.y) { winStatus = true; break; }
                 }
                 if (winStatus === 'fail') break;
                 if (element) element.classList.remove('executing');
             }
 
-            // 只有在所有指令執行完畢後，才檢查是否停在終點
+            // 指令全部執行完畢，進行最終判定
             if (winStatus !== 'fail') {
-                if (shipState.x === endPos.x && shipState.y === endPos.y) {
-                    winStatus = true;
-                } else {
-                    winStatus = false;
-                }
-            }
-
-            // 指令執行完畢後判定是否在終點
-            if (winStatus !== 'fail') {
-                if (shipState.x === endPos.x && shipState.y === endPos.y) {
-                    winStatus = true;
-                }
+                winStatus = (shipState.x === endPos.x && shipState.y === endPos.y);
             }
 
             if (winStatus === true) {
