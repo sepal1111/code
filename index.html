@@ -153,24 +153,47 @@
         }
 
         @keyframes floating {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-6px); }
+
+            0%,
+            100% {
+                transform: translateY(0px);
+            }
+
+            50% {
+                transform: translateY(-6px);
+            }
         }
 
         .teleport-in {
             animation: teleport-in 0.8s ease-in forwards;
         }
+
         @keyframes teleport-in {
-            0% { transform: scale(1) rotate(0deg); opacity: 1; }
-            100% { transform: scale(0) rotate(720deg); opacity: 0; }
+            0% {
+                transform: scale(1) rotate(0deg);
+                opacity: 1;
+            }
+
+            100% {
+                transform: scale(0) rotate(720deg);
+                opacity: 0;
+            }
         }
 
         .teleport-out {
             animation: teleport-out 0.8s ease-out forwards;
         }
+
         @keyframes teleport-out {
-            0% { transform: scale(0) rotate(-720deg); opacity: 0; }
-            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+            0% {
+                transform: scale(0) rotate(-720deg);
+                opacity: 0;
+            }
+
+            100% {
+                transform: scale(1) rotate(0deg);
+                opacity: 1;
+            }
         }
 
         .lvl-locked {
@@ -380,7 +403,7 @@
                         <span id="limit-right" class="text-[9px] mt-1 bg-indigo-200 px-1.5 rounded-full">∞</span>
                     </button>
                     <button id="btn-shoot" onclick="addCommand('shoot')"
-                        class="card-active flex flex-col items-center p-2 bg-red-50 border-2 border-red-200 rounded-xl text-red-700 font-bold disabled:opacity-40">
+                        class="card-active hidden flex flex-col items-center p-2 bg-red-50 border-2 border-red-200 rounded-xl text-red-700 font-bold disabled:opacity-40">
                         <span class="text-xl">🎯</span>
                         <span id="limit-shoot" class="text-[9px] mt-1 bg-red-200 px-1.5 rounded-full">∞</span>
                     </button>
@@ -472,7 +495,7 @@
                     { x: 4, y: 4 }, { x: 3, y: 4 }, { x: 5, y: 4 }
                 ],
                 portals: [
-                    { x: 0, y: 0, targetX: 8, targetY: 8 }, 
+                    { x: 0, y: 0, targetX: 8, targetY: 8 },
                     { x: 8, y: 8, targetX: 0, targetY: 0 }
                 ],
                 keyPos: { x: 0, y: 5 },
@@ -486,6 +509,7 @@
         let shipState = { x: 4, y: 8, dir: 0 };
         let program = [];
         let isRunning = false;
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         let isMusicOn = false;
         let hasKey = false;
         let hasWonCurrentRun = false;
@@ -501,8 +525,10 @@
          */
         const playlist = [
             'bgm1.mp3',
-                'bgm2.mp3',
-            'bgm3.mp3'
+            'bgm2.mp3',
+            'bgm3.mp3',
+            'bgm4.mp3',
+            'bgm5.mp3'
         ];
         const bgm = new Audio();
         bgm.volume = 0.4;
@@ -514,12 +540,6 @@
         };
         bgm.addEventListener('ended', () => { if (isMusicOn) playRandomTrack(); });
 
-        let isMusicOn = false;
-        let hasKey = false;
-        let hasWonCurrentRun = false;
-        let isGameCleared = localStorage.getItem('pirate_game_cleared') === 'true';
-        let levelStartTime = 0;
-        let gameTimerInterval = null;
         let activeDriftwoods = [];
 
         function playSfx(freq, type = 'sine', duration = 0.1, volume = 0.05) {
@@ -625,7 +645,7 @@
             startPos = lvl.startPos || { x: 4, y: 8 };
             endPos = lvl.endPos || { x: 4, y: 0 };
             board.innerHTML = '';
-            
+
             // 初始化浮木
             activeDriftwoods = JSON.parse(JSON.stringify(lvl.driftwoods || []));
 
@@ -634,11 +654,11 @@
                     const cell = document.createElement('div');
                     cell.className = 'grid-cell';
                     if (x === startPos.x && y === startPos.y) cell.classList.add('bg-green-500/20');
-                    
+
                     const objLayer = document.createElement('div');
                     objLayer.className = 'cell-object';
                     objLayer.id = `obj-${x}-${y}`;
-                    
+
                     if (x === endPos.x && y === endPos.y) {
                         objLayer.innerHTML = '<span class="text-2xl drop-shadow-md">💰</span>';
                         cell.classList.add('bg-yellow-400/10');
@@ -800,63 +820,64 @@
                             playSfx(res === 'ok' ? 300 : 400);
                         }
 
-                    // 檢查是否經過鑰匙
-                    if (lvl.keyPos && shipState.x === lvl.keyPos.x && shipState.y === lvl.keyPos.y) {
-                        if (!hasKey) {
-                            hasKey = true;
-                            playSfx(800, 'sine', 0.2, 0.1);
-                            const keyEl = document.getElementById('key-obj');
-                            if (keyEl) keyEl.style.opacity = '0.3';
-                        }
-                    }
-
-                    // 檢查是否經過或抵達過終點
-                    if (shipState.x === endPos.x && shipState.y === endPos.y) {
-                        if (!reachedTreasureMidway) {
-                            reachedTreasureMidway = true;
-                            firstReachInfo = {
-                                cmdIndex: i + 1,
-                                isDuringRepeat: (totalRepeat > 1 && r < totalRepeat - 1),
-                                reachedAtRepeat: r + 1
-                            };
-                        }
-                    }
-
-                    await sleep(600);
-                    if (res === 'hit' || res === 'out') {
-                        playSfx(100, 'sawtooth', 0.5, 0.1);
-                        let failTitle = '💥 航行失敗';
-                        let failMsg = res === 'hit' ? '撞上礁石沉船了！' : '船隻駛出了邊界！';
-
-                        if (reachedTreasureMidway) {
-                            failTitle = '⚓ 指令過多';
-                            if (firstReachInfo.isDuringRepeat) {
-                                failMsg = `你在第 ${firstReachInfo.cmdIndex} 個指令執行到第 ${firstReachInfo.reachedAtRepeat} 次時就抵達過終點了，重複次數設定太多囉！`;
-                            } else {
-                                failMsg = `你已經在第 ${firstReachInfo.cmdIndex} 個指令結束時抵達終點了，後續指令是多餘的。`;
+                        // 檢查是否經過鑰匙
+                        if (lvl.keyPos && shipState.x === lvl.keyPos.x && shipState.y === lvl.keyPos.y) {
+                            if (!hasKey) {
+                                hasKey = true;
+                                playSfx(800, 'sine', 0.2, 0.1);
+                                const keyEl = document.getElementById('key-obj');
+                                if (keyEl) keyEl.style.opacity = '0.3';
                             }
-                            failMsg += `\n後續動作讓船隻` + (res === 'hit' ? '撞上了礁石！' : '駛出了邊界！');
                         }
 
-                        showModal(failTitle, failMsg, '❌', '重新規劃', false);
-                        winStatus = 'fail'; break;
-                    }
-                    if (lvl.portals) {
-                        const p = lvl.portals.find(p => p.x === shipState.x && p.y === shipState.y);
-                        if (p) {
-                            const shipEntity = document.getElementById('ship-entity');
-                            if (shipEntity) shipEntity.classList.add('teleport-in');
-                            
-                            await playAudio('transin.mp3');
-                            
-                            shipState.x = p.targetX; shipState.y = p.targetY;
-                            updateShipPosition();
-                            
-                            const newShipEntity = document.getElementById('ship-entity');
-                            if (newShipEntity) newShipEntity.classList.add('teleport-out');
-                            
-                            await playAudio('transout.mp3');
-                            await sleep(200);
+                        // 檢查是否經過或抵達過終點
+                        if (shipState.x === endPos.x && shipState.y === endPos.y) {
+                            if (!reachedTreasureMidway) {
+                                reachedTreasureMidway = true;
+                                firstReachInfo = {
+                                    cmdIndex: i + 1,
+                                    isDuringRepeat: (totalRepeat > 1 && r < totalRepeat - 1),
+                                    reachedAtRepeat: r + 1
+                                };
+                            }
+                        }
+
+                        await sleep(600);
+                        if (res === 'hit' || res === 'out') {
+                            playSfx(100, 'sawtooth', 0.5, 0.1);
+                            let failTitle = '💥 航行失敗';
+                            let failMsg = res === 'hit' ? '撞上礁石沉船了！' : '船隻駛出了邊界！';
+
+                            if (reachedTreasureMidway) {
+                                failTitle = '⚓ 指令過多';
+                                if (firstReachInfo.isDuringRepeat) {
+                                    failMsg = `你在第 ${firstReachInfo.cmdIndex} 個指令執行到第 ${firstReachInfo.reachedAtRepeat} 次時就抵達過終點了，重複次數設定太多囉！`;
+                                } else {
+                                    failMsg = `你已經在第 ${firstReachInfo.cmdIndex} 個指令結束時抵達終點了，後續指令是多餘的。`;
+                                }
+                                failMsg += `\n後續動作讓船隻` + (res === 'hit' ? '撞上了礁石！' : '駛出了邊界！');
+                            }
+
+                            showModal(failTitle, failMsg, '❌', '重新規劃', false);
+                            winStatus = 'fail'; break;
+                        }
+                        if (lvl.portals) {
+                            const p = lvl.portals.find(p => p.x === shipState.x && p.y === shipState.y);
+                            if (p) {
+                                const shipEntity = document.getElementById('ship-entity');
+                                if (shipEntity) shipEntity.classList.add('teleport-in');
+
+                                await playAudio('transin.mp3');
+
+                                shipState.x = p.targetX; shipState.y = p.targetY;
+                                updateShipPosition();
+
+                                const newShipEntity = document.getElementById('ship-entity');
+                                if (newShipEntity) newShipEntity.classList.add('teleport-out');
+
+                                await playAudio('transout.mp3');
+                                await sleep(200);
+                            }
                         }
                     }
                 }
@@ -1063,9 +1084,9 @@
                 exp.className = 'text-3xl absolute z-[100] animate-ping';
                 exp.innerHTML = '💥';
                 if (objLayer) objLayer.appendChild(exp);
-                
+
                 await playAudio('bomb.mp3');
-                
+
                 if (objLayer) {
                     objLayer.innerHTML = '';
                     exp.remove();
