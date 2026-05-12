@@ -148,6 +148,31 @@
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
         }
 
+        .floating {
+            animation: floating 3s ease-in-out infinite;
+        }
+
+        @keyframes floating {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-6px); }
+        }
+
+        .teleport-in {
+            animation: teleport-in 0.8s ease-in forwards;
+        }
+        @keyframes teleport-in {
+            0% { transform: scale(1) rotate(0deg); opacity: 1; }
+            100% { transform: scale(0) rotate(720deg); opacity: 0; }
+        }
+
+        .teleport-out {
+            animation: teleport-out 0.8s ease-out forwards;
+        }
+        @keyframes teleport-out {
+            0% { transform: scale(0) rotate(-720deg); opacity: 0; }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+
         .lvl-locked {
             filter: grayscale(1);
             opacity: 0.5;
@@ -258,9 +283,19 @@
             <div onclick="selectShip('🛶')" class="ship-option bg-white/10 p-6 rounded-3xl text-6xl" id="opt-3">🛶</div>
         </div>
         <button onclick="startGame()"
-            class="bg-yellow-400 text-sky-900 px-12 py-4 rounded-full text-2xl font-bold shadow-2xl hover:bg-yellow-300 transition active:scale-95">
+            class="bg-yellow-400 text-sky-900 px-12 py-4 rounded-full text-2xl font-bold shadow-2xl hover:bg-yellow-300 transition active:scale-95 mb-6">
             🎮 啟航冒險！
         </button>
+        <div class="flex flex-col sm:flex-row gap-4">
+            <a href="custom.html"
+                class="bg-sky-500/80 text-white px-8 py-3 rounded-full text-lg font-bold border border-sky-300/30 hover:bg-sky-400/80 transition active:scale-95 flex items-center gap-2">
+                🌊 自訂挑戰
+            </a>
+            <a href="editor.html"
+                class="bg-sky-700/50 text-white px-8 py-3 rounded-full text-lg font-bold border border-sky-400/30 hover:bg-sky-600/50 transition active:scale-95 flex items-center gap-2">
+                🛠️ 地圖編輯器
+            </a>
+        </div>
     </div>
 
     <!-- 頁首面板 -->
@@ -343,6 +378,11 @@
                         class="card-active flex flex-col items-center p-2 bg-indigo-50 border-2 border-indigo-200 rounded-xl text-indigo-700 font-bold disabled:opacity-40">
                         <span class="text-xl">↩️</span>
                         <span id="limit-right" class="text-[9px] mt-1 bg-indigo-200 px-1.5 rounded-full">∞</span>
+                    </button>
+                    <button id="btn-shoot" onclick="addCommand('shoot')"
+                        class="card-active flex flex-col items-center p-2 bg-red-50 border-2 border-red-200 rounded-xl text-red-700 font-bold disabled:opacity-40">
+                        <span class="text-xl">🎯</span>
+                        <span id="limit-shoot" class="text-[9px] mt-1 bg-red-200 px-1.5 rounded-full">∞</span>
                     </button>
                 </div>
 
@@ -461,34 +501,26 @@
          */
         const playlist = [
             'bgm1.mp3',
-            'bgm2.mp3',
+                'bgm2.mp3',
             'bgm3.mp3'
         ];
         const bgm = new Audio();
         bgm.volume = 0.4;
-
-        let failedTracks = new Set(); // 記錄讀取失敗的檔案
-
-        // 當音樂讀取失敗時 (例如 404)，自動跳到下一首
+        let failedTracks = new Set();
         bgm.onerror = () => {
-            console.error(`無法讀取音樂檔: ${bgm.src}，嘗試隨機播放其他曲目...`);
             const currentTrack = bgm.src.split('/').pop();
             failedTracks.add(currentTrack);
-
-            if (failedTracks.size < playlist.length && isMusicOn) {
-                setTimeout(playRandomTrack, 500); // 稍微延遲後嘗試下一首
-            } else if (failedTracks.size >= playlist.length) {
-                console.warn("播放清單中的所有音樂皆無法讀取，請檢查 music 資料夾。");
-                isMusicOn = false;
-                document.getElementById('music-btn').innerText = '🎵';
-            }
+            if (failedTracks.size < playlist.length && isMusicOn) setTimeout(playRandomTrack, 500);
         };
+        bgm.addEventListener('ended', () => { if (isMusicOn) playRandomTrack(); });
 
-        bgm.addEventListener('ended', () => {
-            if (isMusicOn) playRandomTrack();
-        });
-
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let isMusicOn = false;
+        let hasKey = false;
+        let hasWonCurrentRun = false;
+        let isGameCleared = localStorage.getItem('pirate_game_cleared') === 'true';
+        let levelStartTime = 0;
+        let gameTimerInterval = null;
+        let activeDriftwoods = [];
 
         function playSfx(freq, type = 'sine', duration = 0.1, volume = 0.05) {
             try {
@@ -504,6 +536,15 @@
                 osc.start();
                 osc.stop(audioCtx.currentTime + duration);
             } catch (e) { }
+        }
+
+        function playAudio(filename) {
+            return new Promise((resolve) => {
+                const audio = new Audio(`music/${filename}`);
+                audio.onended = resolve;
+                audio.onerror = resolve;
+                audio.play().catch(resolve);
+            });
         }
 
         function playRandomTrack() {
@@ -584,21 +625,38 @@
             startPos = lvl.startPos || { x: 4, y: 8 };
             endPos = lvl.endPos || { x: 4, y: 0 };
             board.innerHTML = '';
+            
+            // 初始化浮木
+            activeDriftwoods = JSON.parse(JSON.stringify(lvl.driftwoods || []));
+
             for (let y = 0; y < GRID_SIZE; y++) {
                 for (let x = 0; x < GRID_SIZE; x++) {
                     const cell = document.createElement('div');
                     cell.className = 'grid-cell';
                     if (x === startPos.x && y === startPos.y) cell.classList.add('bg-green-500/20');
+                    
                     const objLayer = document.createElement('div');
                     objLayer.className = 'cell-object';
+                    objLayer.id = `obj-${x}-${y}`;
+                    
                     if (x === endPos.x && y === endPos.y) {
                         objLayer.innerHTML = '<span class="text-2xl drop-shadow-md">💰</span>';
                         cell.classList.add('bg-yellow-400/10');
                     } else if (lvl.keyPos && x === lvl.keyPos.x && y === lvl.keyPos.y) {
-                        objLayer.innerHTML = '<span id="key-obj" class="text-xl">🔑</span>';
+                        objLayer.innerHTML = `<span id="key-obj" class="text-2xl ${hasKey ? 'opacity-30' : ''}">🔑</span>`;
                         cell.classList.add('bg-amber-400/10');
-                    } else if (lvl.obstacles.some(o => o.x === x && o.y === y)) objLayer.innerHTML = '<span class="text-xl">🪨</span>';
-                    else if (lvl.portals && lvl.portals.some(p => p.x === x && p.y === y)) objLayer.innerHTML = '<span class="text-xl">🌀</span>';
+                    } else if (lvl.obstacles.some(o => o.x === x && o.y === y)) {
+                        objLayer.innerHTML = '<span class="text-xl">🪨</span>';
+                    } else if (activeDriftwoods.some(d => d.x === x && d.y === y)) {
+                        const delay = ((x + y) * 0.4 % 3).toFixed(1);
+                        objLayer.innerHTML = `<span class="text-2xl floating" style="animation-delay: -${delay}s">🪵</span>`;
+                    } else if (lvl.portals) {
+                        const p = lvl.portals.find(p => p.x === x && p.y === y);
+                        if (p) {
+                            const colors = { 'purple': '🟣', 'green': '🟢', 'blue': '🔵' };
+                            objLayer.innerHTML = `<span class="text-2xl">${colors[p.color] || '🟣'}</span>`;
+                        }
+                    }
                     cell.appendChild(objLayer);
                     board.appendChild(cell);
                 }
@@ -660,6 +718,7 @@
             arrowBody.className = `direction-arrow`;
             arrowContainer.appendChild(arrowBody);
             const ship = document.createElement('div');
+            ship.id = 'ship-entity';
             ship.className = 'text-4xl drop-shadow-lg relative z-50';
             ship.innerHTML = shipIcon;
             wrapper.appendChild(arrowContainer);
@@ -692,9 +751,9 @@
         function renderProgram() {
             const list = document.getElementById('program-list');
             list.innerHTML = '';
-            const cmdIcons = { 'forward': '⬆️', 'backward': '⬇️', 'left': '↪️', 'right': '↩️' };
-            const cmdNames = { 'forward': '前進', 'backward': '後退', 'left': '左轉', 'right': '右轉' };
-            const cmdColors = { 'forward': 'bg-blue-600', 'backward': 'bg-blue-600', 'left': 'bg-indigo-600', 'right': 'bg-indigo-600' };
+            const cmdIcons = { 'forward': '⬆️', 'backward': '⬇️', 'left': '↪️', 'right': '↩️', 'shoot': '🎯' };
+            const cmdNames = { 'forward': '前進', 'backward': '後退', 'left': '左轉', 'right': '右轉', 'shoot': '射擊' };
+            const cmdColors = { 'forward': 'bg-blue-600', 'backward': 'bg-blue-600', 'left': 'bg-indigo-600', 'right': 'bg-indigo-600', 'shoot': 'bg-red-600' };
             program.forEach((cmd, idx) => {
                 const item = document.createElement('div');
                 item.className = `command-card ${cmdColors[cmd.type]}`;
@@ -726,10 +785,20 @@
                 if (element) { element.classList.add('executing'); element.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
                 const totalRepeat = cmd.repeats.reduce((a, b) => a * b, 1);
                 for (let r = 0; r < totalRepeat; r++) {
-                    const res = moveShip(cmd.type);
-                    updateShipPosition();
-                    if (res === 'rotate') playSfx(400, 'sine', 0.1, 0.05);
-                    else if (res === 'ok') playSfx(300, 'sine', 0.1, 0.05);
+                    if (cmd.type === 'shoot') {
+                        await performShoot();
+                    } else {
+                        if (cmd.type === 'left') {
+                            await playAudio('turn-left.mp3');
+                        } else if (cmd.type === 'right') {
+                            await playAudio('turn-right.mp3');
+                        }
+
+                        const res = moveShip(cmd.type);
+                        updateShipPosition();
+                        if (cmd.type === 'forward' || cmd.type === 'backward') {
+                            playSfx(res === 'ok' ? 300 : 400);
+                        }
 
                     // 檢查是否經過鑰匙
                     if (lvl.keyPos && shipState.x === lvl.keyPos.x && shipState.y === lvl.keyPos.y) {
@@ -775,10 +844,19 @@
                     if (lvl.portals) {
                         const p = lvl.portals.find(p => p.x === shipState.x && p.y === shipState.y);
                         if (p) {
-                            playSfx(1200, 'sine', 0.4, 0.05);
+                            const shipEntity = document.getElementById('ship-entity');
+                            if (shipEntity) shipEntity.classList.add('teleport-in');
+                            
+                            await playAudio('transin.mp3');
+                            
                             shipState.x = p.targetX; shipState.y = p.targetY;
                             updateShipPosition();
-                            await sleep(600);
+                            
+                            const newShipEntity = document.getElementById('ship-entity');
+                            if (newShipEntity) newShipEntity.classList.add('teleport-out');
+                            
+                            await playAudio('transout.mp3');
+                            await sleep(200);
                         }
                     }
                 }
@@ -949,6 +1027,50 @@
             if (hasWonCurrentRun && currentLevelIndex < customLevels.length - 1) switchLevel(currentLevelIndex + 1);
             else { shipState = { x: startPos.x, y: startPos.y, dir: 0 }; updateShipPosition(); }
             hasWonCurrentRun = false;
+        }
+
+        async function performShoot() {
+            const { x, y, dir } = shipState;
+            const tx = x + [0, 1, 0, -1][dir];
+            const ty = y + [-1, 0, 1, 0][dir];
+
+            await playAudio('laser.mp3');
+
+            const bullet = document.createElement('div');
+            bullet.innerHTML = '☄️';
+            bullet.className = 'absolute z-[60] transition-all duration-300 text-xl';
+            const cell = document.getElementById(`cell-${x}-${y}`);
+            if (cell) cell.appendChild(bullet);
+
+            await sleep(50);
+            const targetCell = document.getElementById(`cell-${tx}-${ty}`);
+            if (targetCell) {
+                const rect = targetCell.getBoundingClientRect();
+                const startRect = cell.getBoundingClientRect();
+                bullet.style.transform = `translate(${rect.left - startRect.left}px, ${rect.top - startRect.top}px)`;
+            } else {
+                bullet.style.opacity = '0';
+            }
+
+            await sleep(300);
+            bullet.remove();
+
+            const driftwoodIndex = activeDriftwoods.findIndex(d => d.x === tx && d.y === ty);
+            if (driftwoodIndex !== -1) {
+                activeDriftwoods.splice(driftwoodIndex, 1);
+                const objLayer = document.getElementById(`obj-${tx}-${ty}`);
+                const exp = document.createElement('div');
+                exp.className = 'text-3xl absolute z-[100] animate-ping';
+                exp.innerHTML = '💥';
+                if (objLayer) objLayer.appendChild(exp);
+                
+                await playAudio('bomb.mp3');
+                
+                if (objLayer) {
+                    objLayer.innerHTML = '';
+                    exp.remove();
+                }
+            }
         }
 
         window.onload = () => {
