@@ -619,52 +619,77 @@
             <div class="text-5xl mb-3">🌀</div>
             <h2 class="text-xl font-bold mb-4 text-gray-800">選擇漩渦顏色</h2>
             <div class="grid grid-cols-2 gap-3 mb-6">
-                <button onclick="selectPortalColor('blue')" class="bg-blue-50 hover:bg-blue-100 text-blue-800 py-2 rounded-xl font-bold border border-blue-200 transition">🔵 藍色</button>
-                <button onclick="selectPortalColor('red')" class="bg-red-50 hover:bg-red-100 text-red-800 py-2 rounded-xl font-bold border border-red-200 transition">🔴 紅色</button>
-                <button onclick="selectPortalColor('green')" class="bg-green-50 hover:bg-green-100 text-green-800 py-2 rounded-xl font-bold border border-green-200 transition">🟢 綠色</button>
-                <button onclick="selectPortalColor('yellow')" class="bg-yellow-50 hover:bg-yellow-100 text-yellow-800 py-2 rounded-xl font-bold border border-yellow-200 transition">🟡 黃色</button>
-                <button onclick="selectPortalColor('purple')" class="bg-purple-50 hover:bg-purple-100 text-purple-800 py-2 rounded-xl font-bold border border-purple-200 transition col-span-2">🟣 紫色</button>
+                <button onclick="selectPortalColor('blue')"
+                    class="bg-blue-50 hover:bg-blue-100 text-blue-800 py-2 rounded-xl font-bold border border-blue-200 transition">🔵
+                    藍色</button>
+                <button onclick="selectPortalColor('red')"
+                    class="bg-red-50 hover:bg-red-100 text-red-800 py-2 rounded-xl font-bold border border-red-200 transition">🔴
+                    紅色</button>
+                <button onclick="selectPortalColor('green')"
+                    class="bg-green-50 hover:bg-green-100 text-green-800 py-2 rounded-xl font-bold border border-green-200 transition">🟢
+                    綠色</button>
+                <button onclick="selectPortalColor('yellow')"
+                    class="bg-yellow-50 hover:bg-yellow-100 text-yellow-800 py-2 rounded-xl font-bold border border-yellow-200 transition">🟡
+                    黃色</button>
+                <button onclick="selectPortalColor('purple')"
+                    class="bg-purple-50 hover:bg-purple-100 text-purple-800 py-2 rounded-xl font-bold border border-purple-200 transition col-span-2">🟣
+                    紫色</button>
             </div>
-            <button onclick="closePortalColorModal()" class="w-full bg-gray-200 text-gray-700 py-2 rounded-xl font-bold hover:bg-gray-300 transition">取消</button>
+            <button onclick="closePortalColorModal()"
+                class="w-full bg-gray-200 text-gray-700 py-2 rounded-xl font-bold hover:bg-gray-300 transition">取消</button>
         </div>
     </div>
 
     <!-- 海盜設定視窗 -->
-    <div id="pirate-settings-modal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-[130] p-4">
+    <div id="pirate-settings-modal"
+        class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-[130] p-4">
         <div class="bg-white p-6 rounded-3xl max-w-xs w-full text-center shadow-2xl border-t-8 border-red-500">
             <div class="text-5xl mb-3">🏴‍☠️</div>
             <h2 class="text-xl font-bold mb-4 text-gray-800">海盜巡邏設定</h2>
-            
+
             <div class="text-left mb-4">
                 <label class="text-sm font-bold text-gray-700 block mb-2">移動方向</label>
                 <div class="grid grid-cols-2 gap-2">
-                    <button onclick="setPirateTempDir('up')" id="btn-pirate-dir-up" class="pirate-dir-btn bg-gray-100 hover:bg-red-50 text-gray-700 py-2 rounded-xl font-bold border-2 border-gray-200 transition">⬆️ 往上</button>
-                    <button onclick="setPirateTempDir('down')" id="btn-pirate-dir-down" class="pirate-dir-btn bg-gray-100 hover:bg-red-50 text-gray-700 py-2 rounded-xl font-bold border-2 border-gray-200 transition">⬇️ 往下</button>
-                    <button onclick="setPirateTempDir('left')" id="btn-pirate-dir-left" class="pirate-dir-btn bg-gray-100 hover:bg-red-50 text-gray-700 py-2 rounded-xl font-bold border-2 border-gray-200 transition">⬅️ 往左</button>
-                    <button onclick="setPirateTempDir('right')" id="btn-pirate-dir-right" class="pirate-dir-btn bg-red-50 hover:bg-red-100 text-red-700 py-2 rounded-xl font-bold border-2 border-red-500 transition">➡️ 往右</button>
+                    <button onclick="setPirateTempDir('up')" id="btn-pirate-dir-up"
+                        class="pirate-dir-btn bg-gray-100 hover:bg-red-50 text-gray-700 py-2 rounded-xl font-bold border-2 border-gray-200 transition">⬆️
+                        往上</button>
+                    <button onclick="setPirateTempDir('down')" id="btn-pirate-dir-down"
+                        class="pirate-dir-btn bg-gray-100 hover:bg-red-50 text-gray-700 py-2 rounded-xl font-bold border-2 border-gray-200 transition">⬇️
+                        往下</button>
+                    <button onclick="setPirateTempDir('left')" id="btn-pirate-dir-left"
+                        class="pirate-dir-btn bg-gray-100 hover:bg-red-50 text-gray-700 py-2 rounded-xl font-bold border-2 border-gray-200 transition">⬅️
+                        往左</button>
+                    <button onclick="setPirateTempDir('right')" id="btn-pirate-dir-right"
+                        class="pirate-dir-btn bg-red-50 hover:bg-red-100 text-red-700 py-2 rounded-xl font-bold border-2 border-red-500 transition">➡️
+                        往右</button>
                 </div>
             </div>
 
             <div class="text-left mb-6">
                 <label class="text-sm font-bold text-gray-700 block mb-2">單向距離 (格)</label>
-                <input type="number" id="pirate-temp-dist" value="3" min="1" max="8" class="w-full border-2 border-gray-200 rounded-xl p-2 text-center font-bold focus:border-red-400 outline-none">
+                <input type="number" id="pirate-temp-dist" value="3" min="1" max="8"
+                    class="w-full border-2 border-gray-200 rounded-xl p-2 text-center font-bold focus:border-red-400 outline-none">
             </div>
 
             <div class="flex gap-3">
-                <button onclick="closePirateModal()" class="flex-1 bg-gray-200 text-gray-700 py-2 rounded-xl font-bold hover:bg-gray-300 transition">取消</button>
-                <button onclick="confirmPirateSettings()" class="flex-1 bg-red-600 text-white py-2 rounded-xl font-bold hover:bg-red-700 transition">確定</button>
+                <button onclick="closePirateModal()"
+                    class="flex-1 bg-gray-200 text-gray-700 py-2 rounded-xl font-bold hover:bg-gray-300 transition">取消</button>
+                <button onclick="confirmPirateSettings()"
+                    class="flex-1 bg-red-600 text-white py-2 rounded-xl font-bold hover:bg-red-700 transition">確定</button>
             </div>
         </div>
     </div>
 
     <!-- 玩法說明視窗 -->
-    <div id="help-modal" class="fixed inset-0 bg-black/70 hidden flex items-center justify-center z-[150] p-4 text-left">
-        <div class="bg-white p-6 rounded-3xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl border-t-8 border-blue-500">
+    <div id="help-modal"
+        class="fixed inset-0 bg-black/70 hidden flex items-center justify-center z-[150] p-4 text-left">
+        <div
+            class="bg-white p-6 rounded-3xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl border-t-8 border-blue-500">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-2xl font-bold text-gray-800 flex items-center gap-2">💡 玩法說明</h2>
                 <button onclick="closeHelp()" class="text-gray-400 hover:text-gray-600 text-2xl">✕</button>
             </div>
-            
+
             <div class="overflow-y-auto pr-2 space-y-6">
                 <!-- 指令積木 -->
                 <section>
@@ -717,7 +742,8 @@
 
                 <!-- 地形與物件 -->
                 <section>
-                    <h3 class="text-lg font-bold text-emerald-600 border-b-2 border-emerald-100 pb-1 mb-3">🏝️ 地形與物件</h3>
+                    <h3 class="text-lg font-bold text-emerald-600 border-b-2 border-emerald-100 pb-1 mb-3">🏝️ 地形與物件
+                    </h3>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div class="flex items-center gap-3 p-2 bg-slate-50 rounded-xl">
                             <span class="text-2xl bg-emerald-100 p-2 rounded-lg">🚩</span>
@@ -779,7 +805,8 @@
                 </section>
             </div>
 
-            <button onclick="closeHelp()" class="mt-6 w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition shadow-lg">開始遊戲</button>
+            <button onclick="closeHelp()"
+                class="mt-6 w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition shadow-lg">開始遊戲</button>
         </div>
     </div>
 
@@ -792,8 +819,8 @@
 
         const TEMPLATE_LEVELS = [
             { name: "第一關：自由航行", desc: "熟悉指令，探索海域。", limits: null, showRepeat: false, obstacles: [], portals: [], startPos: { x: 4, y: 8 }, endPos: { x: 4, y: 0 } },
-            { name: "第二關：精準控制", desc: "資源限制！請謹慎規劃。", limits: { forward: 7, backward: 1, left: 2, right: 2 }, showRepeat: false, obstacles: [], portals: [], startPos: { x: 4, y: 8 }, endPos: { x: 4, y: 0 } },
-            { name: "第三關：邏輯跳躍", desc: "僅一張前進卡？運用重複的魔力！", limits: { forward: 1, backward: 0, left: 0, right: 0 }, showRepeat: true, obstacles: [], portals: [], startPos: { x: 4, y: 8 }, endPos: { x: 4, y: 0 } },
+            { name: "第二關：邏輯跳躍", desc: "僅一張前進卡？運用重複的魔力！", limits: { forward: 1, backward: 0, left: 0, right: 0 }, showRepeat: true, obstacles: [], portals: [], startPos: { x: 4, y: 8 }, endPos: { x: 4, y: 0 } },
+            { name: "第三關：精準控制", desc: "資源限制！請謹慎規劃。", limits: { forward: 6, backward: 2, left: 2, right: 2 }, showRepeat: false, obstacles: [], portals: [], startPos: { x: 4, y: 8 }, endPos: { x: 4, y: 0 } },
             { name: "第四關：避開礁石", desc: "前方有巨石阻擋，請繞道而行。", limits: { forward: 5, left: 2, right: 2, backward: 1 }, showRepeat: true, obstacles: [{ x: 4, y: 4 }], portals: [], startPos: { x: 4, y: 8 }, endPos: { x: 4, y: 0 } },
             {
                 name: "第五關：傳送秘境", desc: "跨越礁石牆，尋找神祕傳送門。", limits: { forward: 2, left: 1, right: 1 }, showRepeat: true,
@@ -926,9 +953,9 @@
                     try {
                         const parsed = JSON.parse(saved);
                         if (parsed && parsed.length > 0) hasLevels = true;
-                    } catch(e) {}
+                    } catch (e) { }
                 }
-                
+
                 if (!hasLevels) {
                     playSfx(880);
                     // 如果沒有關卡存在，直接初始化並進入地圖編輯模式
@@ -1165,9 +1192,9 @@
                 // --- 處理指令卡片顯示/隱藏 (針對內建關卡的規則) ---
                 let isVisible = true;
                 if (!isEditorMode && gameMode === 'challenge') {
-                    if (currentLevelIndex <= 1) { // 第一、二關 (索引 0, 1)
+                    if (!lvl.showRepeat) {
                         isVisible = ['forward', 'backward', 'left', 'right'].includes(type);
-                    } else { // 第三關以後 (索引 2+)
+                    } else {
                         isVisible = ['forward', 'backward', 'left', 'right', 'repeat2', 'repeat3'].includes(type);
                     }
                 }
@@ -1301,9 +1328,9 @@
                     else dy = 1;
                 }
 
-                return { 
+                return {
                     originPos: { x: p.x, y: p.y },
-                    currentPos: { x: p.x, y: p.y }, 
+                    currentPos: { x: p.x, y: p.y },
                     dx, dy,
                     dist: p.dist || 99,
                     stepsTaken: 0,
@@ -1462,7 +1489,7 @@
 
             pirateList.forEach(p => {
                 let { x, y } = p.currentPos;
-                
+
                 // If at origin and moving backward, force forward
                 if (!p.movingForward && p.stepsTaken <= 0 && !p.ignoreOrigin) {
                     p.movingForward = true;
@@ -1536,7 +1563,7 @@
             bgm.pause();
             isMusicOn = false;
             const musicBtn = document.getElementById('music-btn');
-            if(musicBtn) musicBtn.innerText = '🎵';
+            if (musicBtn) musicBtn.innerText = '🎵';
 
             // 載入目前關卡
             tempLevel = JSON.parse(JSON.stringify(customLevels[currentLevelIndex]));
@@ -1603,7 +1630,7 @@
             currentPortalColor = color;
             closePortalColorModal();
             applyToolSelection('portal');
-            
+
             const btn = document.querySelector('button[data-tool="portal"]');
             if (btn) {
                 const colors = { 'blue': '🔵', 'red': '🔴', 'green': '🟢', 'yellow': '🟡', 'purple': '🟣' };
@@ -1658,10 +1685,10 @@
                 } else if (currentEditTool === 'door') {
                     lvl.doors.push({ x, y });
                 } else if (currentEditTool === 'pirate') {
-                    lvl.pirates.push({ 
-                        x, y, 
-                        startDir: currentPirateSettings.dir, 
-                        dist: currentPirateSettings.dist 
+                    lvl.pirates.push({
+                        x, y,
+                        startDir: currentPirateSettings.dir,
+                        dist: currentPirateSettings.dist
                     });
                 } else if (currentEditTool === 'portal') {
                     const color = currentPortalColor;
@@ -1863,18 +1890,18 @@
             showConfirmModal("清除所有關卡", "確定要清除所有自訂關卡嗎？此操作將無法復原！", "🗑️", () => {
                 customLevels = [JSON.parse(JSON.stringify(TEMPLATE_LEVELS[0]))];
                 customLevels[0].name = "我的自訂關卡";
-                
+
                 localStorage.removeItem('pirate_game_custom_levels');
-                
+
                 currentLevelIndex = 0;
                 tempLevel = JSON.parse(JSON.stringify(customLevels[0]));
-                
+
                 initBoard();
                 updateCardLimits();
                 updateEditorFields();
                 updateLevelNav();
                 updateLevelManagerList();
-                
+
                 showModal('清除完成', '所有自訂關卡已清除！', '✅', '確定');
             });
         }
