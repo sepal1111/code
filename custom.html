@@ -137,12 +137,41 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        .repeat-badge {
-            background-color: white;
-            color: #ea580c;
-            border-radius: 4px;
-            padding: 1px 4px;
-            font-size: 0.7rem;
+        #program-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            align-content: start;
+            overflow-y: auto;
+        }
+
+        .repeat-block {
+            border: 2px solid #fb923c;
+            background: rgba(251, 146, 60, 0.05);
+            border-radius: 1rem;
+            padding: 8px;
+            margin-bottom: 4px;
+            position: relative;
+        }
+
+        .repeat-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #f97316;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 0.75rem;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .repeat-body {
+            padding-left: 16px;
+            border-left: 2px dashed #fdba74;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
         }
 
         .floating {
@@ -247,10 +276,10 @@
                         <span>🔄 重複卡片</span>
                     </h2>
                     <div class="grid grid-cols-2 gap-2">
-                        <button onclick="applyRepeat(2)" class="flex items-center justify-center gap-2 p-2 bg-orange-50 border-2 border-orange-200 rounded-xl text-orange-700 font-bold hover:bg-orange-100 transition active:scale-95">
+                        <button onclick="addCommand('repeat_2')" class="flex items-center justify-center gap-2 p-2 bg-orange-50 border-2 border-orange-200 rounded-xl text-orange-700 font-bold hover:bg-orange-100 transition active:scale-95">
                             <span class="text-lg">🔁</span><span class="text-xs">x2</span>
                         </button>
-                        <button onclick="applyRepeat(3)" class="flex items-center justify-center gap-2 p-2 bg-orange-50 border-2 border-orange-200 rounded-xl text-orange-700 font-bold hover:bg-orange-100 transition active:scale-95">
+                        <button onclick="addCommand('repeat_3')" class="flex items-center justify-center gap-2 p-2 bg-orange-50 border-2 border-orange-200 rounded-xl text-orange-700 font-bold hover:bg-orange-100 transition active:scale-95">
                             <span class="text-lg">🔁</span><span class="text-xs">x3</span>
                         </button>
                     </div>
@@ -266,7 +295,7 @@
                         <button onclick="clearProgram()" class="text-xs text-red-500 px-3 py-1 bg-red-50 rounded-lg border border-red-200 transition hover:bg-red-100 font-bold">清除全部</button>
                     </div>
                 </div>
-                <div id="program-list" class="flex-1 p-3 bg-gray-50/50 rounded-xl border-2 border-dashed border-gray-200 grid grid-cols-2 gap-2 content-start overflow-y-auto">
+                <div id="program-list" class="flex-1 p-3 bg-gray-50/50 rounded-xl border-2 border-dashed border-gray-200 overflow-y-auto">
                 </div>
                 <button id="run-btn" onclick="runProgram()" class="mt-4 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-2xl shadow-lg transition active:scale-95 text-lg">
                     🚀 開始航行
@@ -579,45 +608,133 @@
             });
         }
 
+        const REPEAT_MAP = { 'repeat_2': 2, 'repeat_3': 3 };
+
         function addCommand(type) {
             if (isRunning) return;
             const limit = mapData.limits ? (mapData.limits[type] || 0) : 0;
             const used = program.filter(p => p.type === type).length;
             if (limit !== 0 && used >= limit) return;
 
-            program.push({ type, repeats: [] });
+            program.push({ type, wrap: 1 });
             renderProgram();
             updateCardUI();
             playSfx(600);
         }
 
-        function applyRepeat(times) {
-            if (isRunning || program.length === 0) return;
-            program[program.length - 1].repeats.push(times);
+        function changeWrap(idx, delta) {
+            if (isRunning) return;
+            const cmd = program[idx];
+            if (!cmd || !REPEAT_MAP[cmd.type]) return;
+            cmd.wrap = Math.max(1, Math.min(6, (cmd.wrap || 1) + delta));
             renderProgram();
-            playSfx(800);
+            playSfx(800, 'sine', 0.03);
         }
 
         function clearProgram() { if (isRunning) return; program = []; renderProgram(); updateCardUI(); }
         function popCommand() { if (isRunning || program.length === 0) return; program.pop(); renderProgram(); updateCardUI(); }
 
+        function findBlockEnd(track, startIdx, wrapCount) {
+            let i = startIdx + 1;
+            let items = 0;
+            while (items < wrapCount && i < track.length) {
+                const card = track[i];
+                if (REPEAT_MAP[card.type]) {
+                    i = findBlockEnd(track, i, card.wrap || 1);
+                } else {
+                    i++;
+                }
+                items++;
+            }
+            return i;
+        }
+
+        function expandProgram(track) {
+            const result = [];
+            function expand(startIdx, length) {
+                const end = startIdx + length;
+                let i = startIdx;
+                while (i < end && i < track.length) {
+                    const card = track[i];
+                    const rep = REPEAT_MAP[card.type];
+                    if (rep) {
+                        const wrapCount = card.wrap || 1;
+                        const bodyEnd = findBlockEnd(track, i, wrapCount);
+                        const bodyLen = bodyEnd - (i + 1);
+                        for (let k = 0; k < rep; k++) expand(i + 1, bodyLen);
+                        i = bodyEnd;
+                    } else {
+                        result.push({ type: card.type, originalIdx: i });
+                        i++;
+                    }
+                }
+            }
+            expand(0, track.length);
+            return result;
+        }
+
         function renderProgram() {
             const list = document.getElementById('program-list');
             list.innerHTML = '';
-            const cmdIcons = { 'forward': '⬆️', 'backward': '⬇️', 'left': '↪️', 'right': '↩️', 'shoot': '🎯' };
-            const cmdNames = { 'forward': '前進', 'backward': '後退', 'left': '左轉', 'right': '右轉', 'shoot': '射擊' };
-            const cmdColors = { 'forward': 'bg-blue-600', 'backward': 'bg-blue-600', 'left': 'bg-indigo-600', 'right': 'bg-indigo-600', 'shoot': 'bg-red-600' };
             
-            program.forEach((cmd, idx) => {
-                const item = document.createElement('div');
-                item.className = `command-card ${cmdColors[cmd.type]}`;
-                item.id = `program-item-${idx}`;
-                let repsHtml = cmd.repeats.map(r => `<span class="repeat-badge ml-1">x${r}</span>`).join('');
-                item.innerHTML = `<div class="flex items-center gap-2 overflow-hidden"><div class="step-number">${idx + 1}</div><span class="text-xl flex-shrink-0">${cmdIcons[cmd.type]}</span><span class="whitespace-nowrap text-xs">${cmdNames[cmd.type]}</span><div>${repsHtml}</div></div>`;
-                list.appendChild(item);
-            });
+            function renderRecursive(track, startIdx, wrapCount, depth, container) {
+                let i = startIdx;
+                let items = 0;
+                while (items < wrapCount && i < track.length) {
+                    const cmd = track[i];
+                    const isRepeat = REPEAT_MAP[cmd.type];
+                    
+                    if (isRepeat) {
+                        const block = document.createElement('div');
+                        block.className = 'repeat-block';
+                        const header = document.createElement('div');
+                        header.className = 'repeat-header';
+                        header.innerHTML = `
+                            <div class="flex items-center gap-2">
+                                <span class="step-number">${i + 1}</span>
+                                <span>🔁 重複 x${REPEAT_MAP[cmd.type]}</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button onclick="changeWrap(${i}, -1)" class="w-5 h-5 bg-white/20 rounded flex items-center justify-center">-</button>
+                                <span class="text-sm w-4 text-center">${cmd.wrap}</span>
+                                <button onclick="changeWrap(${i}, 1)" class="w-5 h-5 bg-white/20 rounded flex items-center justify-center">+</button>
+                                <button onclick="removeCommand(${i})" class="ml-2 text-white/50 hover:text-white">✕</button>
+                            </div>
+                        `;
+                        block.appendChild(header);
+                        const body = document.createElement('div');
+                        body.className = 'repeat-body';
+                        block.appendChild(body);
+                        container.appendChild(block);
+                        i = renderRecursive(track, i + 1, cmd.wrap, depth + 1, body);
+                    } else {
+                        const item = document.createElement('div');
+                        const cmdIcons = { 'forward': '⬆️', 'backward': '⬇️', 'left': '↪️', 'right': '↩️', 'shoot': '🎯' };
+                        const cmdNames = { 'forward': '前進', 'backward': '後退', 'left': '左轉', 'right': '右轉', 'shoot': '射擊' };
+                        const cmdColors = { 'forward': 'bg-blue-600', 'backward': 'bg-blue-600', 'left': 'bg-indigo-600', 'right': 'bg-indigo-600', 'shoot': 'bg-red-600' };
+                        item.className = `command-card ${cmdColors[cmd.type]}`;
+                        item.id = `program-item-${i}`;
+                        item.innerHTML = `
+                            <div class="flex items-center gap-2">
+                                <div class="step-number">${i + 1}</div>
+                                <span class="text-xl">${cmdIcons[cmd.type]}</span>
+                                <span class="text-xs">${cmdNames[cmd.type]}</span>
+                            </div>
+                            <button onclick="removeCommand(${i})" class="text-white/40 ml-2">✕</button>
+                        `;
+                        container.appendChild(item);
+                        i++;
+                    }
+                    items++;
+                }
+                return i;
+            }
+
+            renderRecursive(program, 0, Infinity, 0, list);
             list.scrollTop = list.scrollHeight;
         }
+
+        function removeCommand(index) { if (isRunning) return; program.splice(index, 1); renderProgram(); updateCardUI(); }
 
         async function runProgram() {
             if (isRunning || program.length === 0) return;
@@ -637,69 +754,68 @@
             
             await new Promise(r => setTimeout(r, 800));
             
+            const expanded = expandProgram(program);
             let winStatus = 'running';
             
-            for (let i = 0; i < program.length; i++) {
-                const cmd = program[i];
-                const element = document.getElementById(`program-item-${i}`);
-                if (element) element.classList.add('executing');
+            for (let i = 0; i < expanded.length; i++) {
+                const step = expanded[i];
+                const originalIdx = step.originalIdx;
                 
-                const totalRepeat = cmd.repeats.reduce((a, b) => a * b, 1);
-                for (let r = 0; r < totalRepeat; r++) {
-                    if (cmd.type === 'shoot') {
-                        await performShoot();
-                    } else {
-                        if (cmd.type === 'left') {
-                            await playAudio('turn-left.mp3');
-                        } else if (cmd.type === 'right') {
-                            await playAudio('turn-right.mp3');
+                document.querySelectorAll('.command-card, .repeat-header').forEach(el => el.classList.remove('executing'));
+                const element = document.getElementById(`program-item-${originalIdx}`);
+                if (element) {
+                    element.classList.add('executing');
+                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+                
+                if (step.type === 'shoot') {
+                    await performShoot();
+                } else {
+                    if (step.type === 'left') {
+                        await playAudio('turn-left.mp3');
+                    } else if (step.type === 'right') {
+                        await playAudio('turn-right.mp3');
+                    }
+
+                    const res = moveShip(step.type);
+                    updateShipPosition();
+                    if (step.type === 'forward' || step.type === 'backward') {
+                        playSfx(res === 'ok' ? 300 : 400);
+                    }
+
+                    if (mapData.keyPos && shipState.x === mapData.keyPos.x && shipState.y === mapData.keyPos.y) {
+                        if (!hasKey) {
+                            hasKey = true;
+                            playSfx(1000);
+                            document.getElementById('key-obj').classList.add('opacity-30');
                         }
+                    }
 
-                        const res = moveShip(cmd.type);
-                        updateShipPosition();
-                        if (cmd.type === 'forward' || cmd.type === 'backward') {
-                            playSfx(res === 'ok' ? 300 : 400);
-                        }
+                    await new Promise(r => setTimeout(r, 600));
 
-                        if (mapData.keyPos && shipState.x === mapData.keyPos.x && shipState.y === mapData.keyPos.y) {
-                            if (!hasKey) {
-                                hasKey = true;
-                                playSfx(1000);
-                                document.getElementById('key-obj').classList.add('opacity-30');
-                            }
-                        }
+                    if (res === 'hit' || res === 'out') {
+                        winStatus = 'fail';
+                        showModal('💥 挑戰失敗', res === 'hit' ? '撞上了障礙物！' : '船隻駛出了邊界！', '❌', '重新規劃');
+                        break;
+                    }
 
-                        await new Promise(r => setTimeout(r, 600));
-
-                        if (res === 'hit' || res === 'out') {
-                            winStatus = 'fail';
-                            showModal('💥 挑戰失敗', res === 'hit' ? '撞上了障礙物！' : '船隻駛出了邊界！', '❌', '重新規劃');
-                            break;
-                        }
-
-                        const currentPortal = mapData.portals.find(p => p.x === shipState.x && p.y === shipState.y);
-                        if (currentPortal) {
-                            const otherPortal = mapData.portals.find(p => p.color === currentPortal.color && (p.x !== shipState.x || p.y !== shipState.y));
-                            if (otherPortal) {
-                                const shipEntity = document.getElementById('ship-entity');
-                                if (shipEntity) shipEntity.classList.add('teleport-in');
-                                
-                                await playAudio('transin.mp3');
-                                
-                                shipState.x = otherPortal.x;
-                                shipState.y = otherPortal.y;
-                                updateShipPosition();
-                                
-                                const newShipEntity = document.getElementById('ship-entity');
-                                if (newShipEntity) newShipEntity.classList.add('teleport-out');
-                                
-                                await playAudio('transout.mp3');
-                                await new Promise(r => setTimeout(r, 200));
-                            }
+                    const currentPortal = mapData.portals.find(p => p.x === shipState.x && p.y === shipState.y);
+                    if (currentPortal) {
+                        const otherPortal = mapData.portals.find(p => p.color === currentPortal.color && (p.x !== shipState.x || p.y !== shipState.y));
+                        if (otherPortal) {
+                            const shipEntity = document.getElementById('ship-entity');
+                            if (shipEntity) shipEntity.classList.add('teleport-in');
+                            await playAudio('transin.mp3');
+                            shipState.x = otherPortal.x;
+                            shipState.y = otherPortal.y;
+                            updateShipPosition();
+                            const newShipEntity = document.getElementById('ship-entity');
+                            if (newShipEntity) newShipEntity.classList.add('teleport-out');
+                            await playAudio('transout.mp3');
+                            await new Promise(r => setTimeout(r, 200));
                         }
                     }
                 }
-                if (element) element.classList.remove('executing');
                 if (winStatus === 'fail') break;
             }
 
