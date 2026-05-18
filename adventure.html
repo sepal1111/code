@@ -151,6 +151,13 @@
             padding: 8px;
             margin-bottom: 4px;
             position: relative;
+            transition: all 0.3s;
+        }
+
+        .repeat-block.executing {
+            border-color: #f59e0b !important;
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.25);
+            background: rgba(245, 158, 11, 0.08) !important;
         }
 
         .repeat-header {
@@ -163,6 +170,30 @@
             border-radius: 0.75rem;
             font-weight: bold;
             margin-bottom: 8px;
+            transition: all 0.3s;
+        }
+
+        .repeat-header.executing {
+            background: linear-gradient(135deg, #fbbf24, #f59e0b) !important;
+            color: #1e3a8a !important;
+            transform: scale(1.02);
+            box-shadow: 0 0 12px rgba(245, 158, 11, 0.5);
+            z-index: 10;
+        }
+
+        .repeat-header.executing .step-number {
+            background-color: rgba(30, 58, 138, 0.2) !important;
+            border-color: rgba(30, 58, 138, 0.4) !important;
+            color: #1e3a8a !important;
+            font-weight: 900 !important;
+        }
+
+        .repeat-iteration-badge {
+            animation: pulse-glow 1.5s infinite alternate;
+        }
+        @keyframes pulse-glow {
+            0% { box-shadow: 0 0 2px rgba(255, 255, 255, 0.4); }
+            100% { box-shadow: 0 0 8px rgba(255, 255, 255, 0.8); }
         }
 
         .repeat-body {
@@ -278,7 +309,7 @@
 
     <div class="flex flex-col lg:flex-row gap-8 w-full max-w-6xl">
         <!-- 遊戲地圖 -->
-        <div class="flex-1 flex flex-col items-center">
+        <div class="flex-1 flex flex-col items-center lg:sticky lg:top-8 self-start">
             <div id="game-board" class="ocean-bg w-full max-w-[500px] grid grid-cols-9 rounded-2xl shadow-2xl overflow-hidden relative border-4 border-sky-900 ring-8 ring-white/50"></div>
         </div>
 
@@ -342,7 +373,7 @@
                         <button onclick="clearProgram()" class="text-xs text-red-500 px-3 py-1 bg-red-50 rounded-lg border border-red-200 transition hover:bg-red-100 whitespace-nowrap w-max font-bold">清除全部</button>
                     </div>
                 </div>
-                <div id="program-list" class="flex-1 p-3 bg-gray-50/50 rounded-xl border-2 border-dashed border-gray-200"></div>
+                <div id="program-list" class="flex-1 p-3 bg-gray-50/50 rounded-xl border-2 border-dashed border-gray-200 overflow-y-auto max-h-[380px]"></div>
                 <button id="run-btn" onclick="runProgram()" class="mt-4 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-2xl shadow-lg transition active:scale-95 text-lg">🚀 開始航行</button>
             </div>
         </div>
@@ -621,7 +652,7 @@
 
         function expandProgram(track) {
             const result = [];
-            function expand(startIdx, length) {
+            function expand(startIdx, length, activeRepeats) {
                 const end = startIdx + length;
                 let i = startIdx;
                 while (i < end && i < track.length) {
@@ -631,15 +662,41 @@
                         const wrapCount = card.wrap || 1;
                         const bodyEnd = findBlockEnd(track, i, wrapCount);
                         const bodyLen = bodyEnd - (i + 1);
-                        for (let k = 0; k < rep; k++) expand(i + 1, bodyLen);
+                        for (let k = 0; k < rep; k++) {
+                            result.push({
+                                type: 'repeat_start',
+                                originalIdx: i,
+                                currentIteration: k + 1,
+                                totalIterations: rep,
+                                activeRepeats: [...activeRepeats]
+                            });
+
+                            expand(i + 1, bodyLen, [
+                                ...activeRepeats,
+                                { originalIdx: i, currentIteration: k + 1, totalIterations: rep }
+                            ]);
+
+                            result.push({
+                                type: 'repeat_end',
+                                originalIdx: i,
+                                currentIteration: k + 1,
+                                totalIterations: rep,
+                                activeRepeats: [...activeRepeats]
+                            });
+                        }
                         i = bodyEnd;
                     } else {
-                        result.push({ type: card.type, originalIdx: i });
+                        result.push({
+                            type: 'command',
+                            commandType: card.type,
+                            originalIdx: i,
+                            activeRepeats: [...activeRepeats]
+                        });
                         i++;
                     }
                 }
             }
-            expand(0, track.length);
+            expand(0, track.length, []);
             return result;
         }
 
@@ -647,7 +704,7 @@
             const list = document.getElementById('program-list');
             list.innerHTML = '';
             
-            function renderBlock(track, startIdx, wrapCount, depth) {
+            function renderRecursive(track, startIdx, wrapCount, depth, container) {
                 let i = startIdx;
                 let items = 0;
                 while (items < wrapCount && i < track.length) {
@@ -657,13 +714,15 @@
                     if (isRepeat) {
                         const block = document.createElement('div');
                         block.className = 'repeat-block';
-                        
+                        block.id = `repeat-block-${i}`;
                         const header = document.createElement('div');
                         header.className = 'repeat-header';
+                        header.id = `repeat-header-${i}`;
                         header.innerHTML = `
                             <div class="flex items-center gap-2">
                                 <span class="step-number">${i + 1}</span>
                                 <span>🔁 重複 x${REPEAT_MAP[cmd.type]}</span>
+                                <span id="repeat-iteration-${i}" class="repeat-iteration-badge hidden ml-2 bg-white/20 text-white text-[10px] px-1.5 py-0.5 rounded-full font-normal"></span>
                             </div>
                             <div class="flex items-center gap-2">
                                 <span class="text-[10px] opacity-80">包裹:</span>
@@ -674,21 +733,11 @@
                             </div>
                         `;
                         block.appendChild(header);
-                        
                         const body = document.createElement('div');
                         body.className = 'repeat-body';
                         block.appendChild(body);
-                        list.appendChild(block);
-                        
-                        // 保存原本的 list 指向，暫時切換到 body 以進行遞迴填充
-                        const oldList = list;
-                        const originalList = document.getElementById('program-list');
-                        // 這裡比較特殊，因為我們是用全域的 list.appendChild，
-                        // 在 vanilla JS 中我們手動傳入父容器
-                        const currentBody = body;
-                        
-                        const nextI = renderRecursive(track, i + 1, cmd.wrap, depth + 1, currentBody);
-                        i = nextI;
+                        container.appendChild(block);
+                        i = renderRecursive(track, i + 1, cmd.wrap, depth + 1, body);
                     } else {
                         const item = document.createElement('div');
                         const cmdIcons = { 'forward': '⬆️', 'backward': '⬇️', 'left': '↪️', 'right': '↩️', 'shoot': '🎯' };
@@ -704,60 +753,6 @@
                                 <span class="whitespace-nowrap text-sm">${cmdNames[cmd.type]}</span>
                             </div>
                             <button onclick="removeCommand(${i})" class="text-white/40 hover:text-white ml-2 text-xs flex-shrink-0">✕</button>
-                        `;
-                        list.appendChild(item);
-                        i++;
-                    }
-                    items++;
-                }
-                return i;
-            }
-
-            // 為了方便遞迴，重新定義一個內部函式
-            function renderRecursive(track, startIdx, wrapCount, depth, container) {
-                let i = startIdx;
-                let items = 0;
-                while (items < wrapCount && i < track.length) {
-                    const cmd = track[i];
-                    const isRepeat = REPEAT_MAP[cmd.type];
-                    
-                    if (isRepeat) {
-                        const block = document.createElement('div');
-                        block.className = 'repeat-block';
-                        const header = document.createElement('div');
-                        header.className = 'repeat-header';
-                        header.innerHTML = `
-                            <div class="flex items-center gap-2">
-                                <span class="step-number">${i + 1}</span>
-                                <span>🔁 重複 x${REPEAT_MAP[cmd.type]}</span>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <button onclick="changeWrap(${i}, -1)" class="w-5 h-5 bg-white/20 rounded flex items-center justify-center">-</button>
-                                <span class="text-sm w-4 text-center">${cmd.wrap}</span>
-                                <button onclick="changeWrap(${i}, 1)" class="w-5 h-5 bg-white/20 rounded flex items-center justify-center">+</button>
-                                <button onclick="removeCommand(${i})" class="ml-2 text-white/50 hover:text-white">✕</button>
-                            </div>
-                        `;
-                        block.appendChild(header);
-                        const body = document.createElement('div');
-                        body.className = 'repeat-body';
-                        block.appendChild(body);
-                        container.appendChild(block);
-                        i = renderRecursive(track, i + 1, cmd.wrap, depth + 1, body);
-                    } else {
-                        const item = document.createElement('div');
-                        const cmdIcons = { 'forward': '⬆️', 'backward': '⬇️', 'left': '↪️', 'right': '↩️', 'shoot': '🎯' };
-                        const cmdNames = { 'forward': '前進', 'backward': '後退', 'left': '左轉', 'right': '右轉', 'shoot': '射擊' };
-                        const cmdColors = { 'forward': 'bg-blue-600', 'backward': 'bg-blue-600', 'left': 'bg-indigo-600', 'right': 'bg-indigo-600', 'shoot': 'bg-red-600' };
-                        item.className = `command-card ${cmdColors[cmd.type]}`;
-                        item.id = `program-item-${i}`;
-                        item.innerHTML = `
-                            <div class="flex items-center gap-2">
-                                <div class="step-number">${i + 1}</div>
-                                <span class="text-xl">${cmdIcons[cmd.type]}</span>
-                                <span class="text-sm">${cmdNames[cmd.type]}</span>
-                            </div>
-                            <button onclick="removeCommand(${i})" class="text-white/40 ml-2">✕</button>
                         `;
                         container.appendChild(item);
                         i++;
@@ -787,70 +782,154 @@
             let winStatus = false;
             let reachedTreasureMidway = false;
             let firstReachInfo = null;
+            let commandStepIndex = 0;
 
             for (let i = 0; i < expanded.length; i++) {
                 const step = expanded[i];
                 const originalIdx = step.originalIdx;
                 
-                // 高亮顯示原始指令
-                document.querySelectorAll('.command-card, .repeat-header').forEach(el => el.classList.remove('executing'));
-                const element = document.getElementById(`program-item-${originalIdx}`);
-                if (element) { 
-                    element.classList.add('executing'); 
-                    element.scrollIntoView({ behavior: 'smooth', block: 'center' }); 
+                // 清除所有高亮與 iteration badge
+                document.querySelectorAll('.command-card, .repeat-header, .repeat-block').forEach(el => {
+                    el.classList.remove('executing');
+                });
+                document.querySelectorAll('.repeat-iteration-badge').forEach(badge => {
+                    badge.classList.add('hidden');
+                    badge.innerText = '';
+                });
+
+                if (step.type === 'repeat_start') {
+                    // 高亮目前的重複指令與其所有上層重複指令
+                    const header = document.getElementById(`repeat-header-${originalIdx}`);
+                    const block = document.getElementById(`repeat-block-${originalIdx}`);
+                    const badge = document.getElementById(`repeat-iteration-${originalIdx}`);
+                    
+                    if (header) header.classList.add('executing');
+                    if (block) block.classList.add('executing');
+                    if (badge) {
+                        badge.innerText = `第 ${step.currentIteration}/${step.totalIterations} 次`;
+                        badge.classList.remove('hidden');
+                    }
+
+                    if (step.activeRepeats) {
+                        step.activeRepeats.forEach(rep => {
+                            const pHeader = document.getElementById(`repeat-header-${rep.originalIdx}`);
+                            const pBlock = document.getElementById(`repeat-block-${rep.originalIdx}`);
+                            const pBadge = document.getElementById(`repeat-iteration-${rep.originalIdx}`);
+                            
+                            if (pHeader) pHeader.classList.add('executing');
+                            if (pBlock) pBlock.classList.add('executing');
+                            if (pBadge) {
+                                pBadge.innerText = `第 ${rep.currentIteration}/${rep.totalIterations} 次`;
+                                pBadge.classList.remove('hidden');
+                            }
+                        });
+                    }
+
+                    await sleep(800);
+                } 
+                else if (step.type === 'repeat_end') {
+                    if (step.activeRepeats) {
+                        step.activeRepeats.forEach(rep => {
+                            const pHeader = document.getElementById(`repeat-header-${rep.originalIdx}`);
+                            const pBlock = document.getElementById(`repeat-block-${rep.originalIdx}`);
+                            const pBadge = document.getElementById(`repeat-iteration-${rep.originalIdx}`);
+                            
+                            if (pHeader) pHeader.classList.add('executing');
+                            if (pBlock) pBlock.classList.add('executing');
+                            if (pBadge) {
+                                pBadge.innerText = `第 ${rep.currentIteration}/${rep.totalIterations} 次`;
+                                pBadge.classList.remove('hidden');
+                            }
+                        });
+                    }
+
+                    await sleep(400);
                 }
+                else if (step.type === 'command') {
+                    commandStepIndex++;
 
-                if (step.type === 'shoot') { await performShoot(); } 
-                else {
-                    if (step.type === 'left') await playAudio('turn-left.mp3');
-                    else if (step.type === 'right') await playAudio('turn-right.mp3');
-                    
-                    const res = moveShip(step.type);
-                    updateShipPosition();
-                    
-                    if (step.type === 'forward' || step.type === 'backward') playSfx(res === 'ok' ? 300 : 400);
-                    
-                    if (lvl.keyPos && shipState.x === lvl.keyPos.x && shipState.y === lvl.keyPos.y && !hasKey) {
-                        hasKey = true; 
-                        playSfx(800, 'sine', 0.2, 0.1);
-                        const keyEl = document.getElementById('key-obj');
-                        if (keyEl) keyEl.style.opacity = '0.3';
-                    }
-
-                    if (shipState.x === endPos.x && shipState.y === endPos.y && !reachedTreasureMidway) {
-                        reachedTreasureMidway = true;
-                        firstReachInfo = { stepIndex: i + 1 };
-                    }
-
-                    await sleep(600);
-
-                    if (res === 'hit' || res === 'out') {
-                        playSfx(100, 'sawtooth', 0.5, 0.1);
-                        let failTitle = '💥 航行失敗', failMsg = res === 'hit' ? '撞上礁石沉船了！' : '船隻駛出了邊界！';
-                        if (reachedTreasureMidway) {
-                            failTitle = '⚓ 指令過多';
-                            failMsg = `你在執行到展開後第 ${firstReachInfo.stepIndex} 步時就抵達過終點了，指令設定太多囉！\n後續動作讓船隻` + (res === 'hit' ? '撞上了礁石！' : '駛出了邊界！');
-                        }
-                        showModal(failTitle, failMsg, '❌', '重新規劃', false);
-                        winStatus = 'fail'; break;
-                    }
-
-                    if (lvl.portals) {
-                        const p = lvl.portals.find(p => p.x === shipState.x && p.y === shipState.y);
-                        if (p) {
-                            const shipEntity = document.getElementById('ship-entity');
-                            if (shipEntity) shipEntity.classList.add('teleport-in');
-                            await playAudio('transin.mp3');
-                            shipState.x = p.targetX; shipState.y = p.targetY;
-                            updateShipPosition();
-                            const newShipEntity = document.getElementById('ship-entity');
-                            if (newShipEntity) newShipEntity.classList.add('teleport-out');
-                            await playAudio('transout.mp3');
-                            await sleep(200);
+                    // 高亮目前執行的原始指令卡片
+                    const element = document.getElementById(`program-item-${originalIdx}`);
+                    if (element) { 
+                        element.classList.add('executing'); 
+                        const container = document.getElementById('program-list');
+                        if (container) {
+                            const containerRect = container.getBoundingClientRect();
+                            const elemRect = element.getBoundingClientRect();
+                            const relativeTop = elemRect.top - containerRect.top;
+                            const targetScroll = container.scrollTop + relativeTop - (containerRect.height / 2) + (elemRect.height / 2);
+                            container.scrollTo({ top: targetScroll, behavior: 'smooth' });
                         }
                     }
+
+                    // 高亮所有包覆此指令的重複迴圈並顯示目前次數
+                    if (step.activeRepeats) {
+                        step.activeRepeats.forEach(rep => {
+                            const header = document.getElementById(`repeat-header-${rep.originalIdx}`);
+                            const block = document.getElementById(`repeat-block-${rep.originalIdx}`);
+                            const badge = document.getElementById(`repeat-iteration-${rep.originalIdx}`);
+                            
+                            if (header) header.classList.add('executing');
+                            if (block) block.classList.add('executing');
+                            if (badge) {
+                                badge.innerText = `第 ${rep.currentIteration}/${rep.totalIterations} 次`;
+                                badge.classList.remove('hidden');
+                            }
+                        });
+                    }
+
+                    if (step.commandType === 'shoot') { await performShoot(); } 
+                    else {
+                        if (step.commandType === 'left') await playAudio('turn-left.mp3');
+                        else if (step.commandType === 'right') await playAudio('turn-right.mp3');
+                        
+                        const res = moveShip(step.commandType);
+                        updateShipPosition();
+                        
+                        if (step.commandType === 'forward' || step.commandType === 'backward') playSfx(res === 'ok' ? 300 : 400);
+                        
+                        if (lvl.keyPos && shipState.x === lvl.keyPos.x && shipState.y === lvl.keyPos.y && !hasKey) {
+                            hasKey = true; 
+                            playSfx(800, 'sine', 0.2, 0.1);
+                            const keyEl = document.getElementById('key-obj');
+                            if (keyEl) keyEl.style.opacity = '0.3';
+                        }
+
+                        if (shipState.x === endPos.x && shipState.y === endPos.y && !reachedTreasureMidway) {
+                            reachedTreasureMidway = true;
+                            firstReachInfo = { stepIndex: commandStepIndex };
+                        }
+
+                        await sleep(600);
+
+                        if (res === 'hit' || res === 'out') {
+                            playSfx(100, 'sawtooth', 0.5, 0.1);
+                            let failTitle = '💥 航行失敗', failMsg = res === 'hit' ? '撞上礁石沉船了！' : '船隻駛出了邊界！';
+                            if (reachedTreasureMidway) {
+                                failTitle = '⚓ 指令過多';
+                                failMsg = `你在執行到展開後第 ${firstReachInfo.stepIndex} 步時就抵達過終點了，指令設定太多囉！\n後續動作讓船隻` + (res === 'hit' ? '撞上了礁石！' : '駛出了邊界！');
+                            }
+                            showModal(failTitle, failMsg, '❌', '重新規劃', false);
+                            winStatus = 'fail'; break;
+                        }
+
+                        if (lvl.portals) {
+                            const p = lvl.portals.find(p => p.x === shipState.x && p.y === shipState.y);
+                            if (p) {
+                                const shipEntity = document.getElementById('ship-entity');
+                                if (shipEntity) shipEntity.classList.add('teleport-in');
+                                await playAudio('transin.mp3');
+                                shipState.x = p.targetX; shipState.y = p.targetY;
+                                updateShipPosition();
+                                const newShipEntity = document.getElementById('ship-entity');
+                                if (newShipEntity) newShipEntity.classList.add('teleport-out');
+                                await playAudio('transout.mp3');
+                                await sleep(200);
+                            }
+                        }
+                    }
+                    if (winStatus) break;
                 }
-                if (winStatus) break;
             }
             if (winStatus !== 'fail') {
                 if (shipState.x === endPos.x && shipState.y === endPos.y) {
@@ -956,6 +1035,13 @@
             if (hasWonCurrentRun && currentLevelIndex < customLevels.length - 1) switchLevel(currentLevelIndex + 1);
             else { shipState = { x: startPos.x, y: startPos.y, dir: 0 }; updateShipPosition(); }
             hasWonCurrentRun = false;
+            
+            // 清除執行高亮
+            document.querySelectorAll('.command-card, .repeat-header, .repeat-block').forEach(el => el.classList.remove('executing'));
+            document.querySelectorAll('.repeat-iteration-badge').forEach(badge => {
+                badge.classList.add('hidden');
+                badge.innerText = '';
+            });
         }
 
         async function performShoot() {
