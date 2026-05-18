@@ -260,6 +260,116 @@
             background: #0ea5e9;
             cursor: pointer;
         }
+        /* Progress Code Modal */
+        #progress-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.65);
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+        #progress-modal.open { display: flex; }
+        .progress-modal-box {
+            background: white;
+            border-radius: 1.5rem;
+            padding: 2rem;
+            max-width: 480px;
+            width: 100%;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.3);
+            border-top: 6px solid #0ea5e9;
+        }
+        #progress-code-textarea {
+            width: 100%;
+            height: 120px;
+            font-family: monospace;
+            font-size: 0.78rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 0.75rem;
+            padding: 0.75rem;
+            resize: none;
+            background: #f8fafc;
+            color: #334155;
+            word-break: break-all;
+            transition: border-color 0.2s;
+        }
+        #progress-code-textarea:focus { outline: none; border-color: #0ea5e9; }
+        .pc-tab-btn {
+            flex: 1;
+            padding: 0.5rem;
+            font-weight: bold;
+            font-size: 0.85rem;
+            border-radius: 0.5rem;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+        }
+        .pc-tab-btn.active {
+            background: #0ea5e9;
+            color: white;
+            border-color: #0284c7;
+        }
+        .pc-tab-btn:not(.active) {
+            background: #f1f5f9;
+            color: #64748b;
+        }
+        .pc-action-btn {
+            width: 100%;
+            padding: 0.75rem;
+            border-radius: 0.75rem;
+            font-weight: bold;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        #pc-feedback {
+            font-size: 0.8rem;
+            min-height: 1.2rem;
+            text-align: center;
+            transition: opacity 0.3s;
+        }
+        /* 已過關鎖定樣式 */
+        #program-locked-banner {
+            display: none;
+            align-items: center;
+            gap: 0.5rem;
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+            border: 1.5px solid #f59e0b;
+            border-radius: 0.75rem;
+            padding: 0.5rem 0.9rem;
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: #92400e;
+            margin-bottom: 0.5rem;
+        }
+        #program-locked-banner.show { display: flex; }
+        #program-list.locked {
+            opacity: 0.82;
+            pointer-events: none;  /* 封鎖內部所有按鈕（包括小 x 删除、wrap +-） */
+            user-select: none;
+        }
+        /* 學生資訊輸入框 */
+        .student-input {
+            width: 5.5rem;
+            padding: 0.25rem 0.5rem;
+            border: 1.5px solid #bae6fd;
+            border-radius: 0.5rem;
+            font-size: 0.78rem;
+            font-weight: bold;
+            color: #0369a1;
+            background: #f0f9ff;
+            text-align: center;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            outline: none;
+        }
+        .student-input:focus {
+            border-color: #0ea5e9;
+            box-shadow: 0 0 0 2px rgba(14,165,233,0.15);
+        }
     </style>
 </head>
 
@@ -267,31 +377,52 @@
 
     <!-- 頁首面板 -->
     <header class="text-center mb-6 w-full max-w-4xl">
-        <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4 px-2">
-            <h1 class="text-2xl font-bold text-sky-800">找到寶藏吧！闖關冒險</h1>
+
+        <!-- 第一排：標題 + 操作按鈕 -->
+        <div class="flex flex-wrap justify-between items-center mb-3 gap-3 px-2">
             <div class="flex items-center gap-3">
+                <h1 class="text-2xl font-bold text-sky-800">找到寶藏吧！闖關冒險</h1>
                 <div id="master-badge"
                     class="hidden bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-3 py-1 rounded-full text-[10px] font-bold shadow-sm animate-bounce">
                     👑 傳奇航海家</div>
-                <div
-                    class="flex items-center gap-3 bg-white/90 backdrop-blur-sm p-2 rounded-2xl shadow-sm border border-sky-100">
-                    <button onclick="toggleMusic()" id="music-btn"
-                        class="text-xl transition hover:scale-110">🎵</button>
-                    <div class="flex flex-col items-start">
-                        <span class="text-[10px] text-gray-400 font-bold ml-1">音樂音量</span>
-                        <input type="range" id="volume-slider" min="0" max="1" step="0.1" value="0.4"
-                            oninput="adjustVolume(this.value)" class="w-16 sm:w-24">
-                    </div>
-                    <div class="w-[1px] h-8 bg-gray-100 mx-1"></div>
-                    <button onclick="toggleAutoCapture()" id="capture-toggle-btn" 
-                        class="px-3 py-1 bg-amber-50 hover:bg-amber-100 text-amber-600 text-xs font-bold rounded-lg transition border border-amber-200 flex items-center gap-1">
-                        <span id="capture-status-icon">📸</span> <span id="capture-status-text">自動擷取: ON</span>
-                    </button>
-                    <div class="w-[1px] h-8 bg-gray-100 mx-1"></div>
-                    <button onclick="goHome()" class="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-lg transition">🏠 首頁</button>
-                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="openProgressModal()"
+                    class="px-3 py-1.5 bg-sky-500 hover:bg-sky-600 text-white text-xs font-bold rounded-xl transition shadow-sm flex items-center gap-1">
+                    📋 進度代碼</button>
+                <button onclick="goHome()"
+                    class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-xl transition">
+                    🏠 首頁</button>
             </div>
         </div>
+
+        <!-- 第二排：學生資訊 + 音樂 + 自動擷取 -->
+        <div class="flex flex-wrap items-center justify-center gap-2 px-2 mb-3">
+            <div class="flex items-center gap-2 bg-white/90 backdrop-blur-sm px-3 py-2 rounded-2xl shadow-sm border border-sky-100">
+                <span class="text-[10px] text-gray-400 font-bold whitespace-nowrap">👤 班級</span>
+                <input id="input-class" type="text" maxlength="10" placeholder="班級名稱"
+                    class="student-input" oninput="saveStudentInfo()">
+                <span class="text-[11px] text-gray-300 font-bold">‧</span>
+                <span class="text-[10px] text-gray-400 font-bold whitespace-nowrap">座號</span>
+                <input id="input-seat" type="text" maxlength="5" placeholder="號"
+                    class="student-input" style="width:3.5rem" oninput="saveStudentInfo()">
+            </div>
+            <div class="flex items-center gap-2 bg-white/90 backdrop-blur-sm px-3 py-2 rounded-2xl shadow-sm border border-sky-100">
+                <button onclick="toggleMusic()" id="music-btn" class="text-lg transition hover:scale-110">🎵</button>
+                <div class="flex flex-col items-start">
+                    <span class="text-[9px] text-gray-400 font-bold">音樂音量</span>
+                    <input type="range" id="volume-slider" min="0" max="1" step="0.1" value="0.4"
+                        oninput="adjustVolume(this.value)" class="w-20">
+                </div>
+            </div>
+            <button onclick="toggleAutoCapture()" id="capture-toggle-btn"
+                class="px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-600 text-xs font-bold rounded-2xl transition border border-amber-200 shadow-sm flex items-center gap-1">
+                <span id="capture-status-icon">📸</span>
+                <span id="capture-status-text">自動擷取: ON</span>
+            </button>
+        </div>
+
+        
 
         <!-- 關卡導航 -->
         <div id="level-nav" class="flex flex-wrap items-center justify-center gap-2 px-2">
@@ -369,9 +500,13 @@
                 <div class="flex justify-between items-center mb-3">
                     <h2 class="text-lg font-bold text-gray-700">💾 程式序列</h2>
                     <div class="flex gap-2">
-                        <button onclick="popCommand()" class="text-xs text-amber-600 px-3 py-1 bg-amber-50 rounded-lg border border-amber-200 transition hover:bg-amber-100 whitespace-nowrap w-max font-bold">復原</button>
-                        <button onclick="clearProgram()" class="text-xs text-red-500 px-3 py-1 bg-red-50 rounded-lg border border-red-200 transition hover:bg-red-100 whitespace-nowrap w-max font-bold">清除全部</button>
+                        <button id="btn-pop" onclick="popCommand()" class="text-xs text-amber-600 px-3 py-1 bg-amber-50 rounded-lg border border-amber-200 transition hover:bg-amber-100 whitespace-nowrap w-max font-bold">復原</button>
+                        <button id="btn-clear" onclick="clearProgram()" class="text-xs text-red-500 px-3 py-1 bg-red-50 rounded-lg border border-red-200 transition hover:bg-red-100 whitespace-nowrap w-max font-bold">清除全部</button>
                     </div>
+                </div>
+                <div id="program-locked-banner">
+                    <span>🏆</span>
+                    <span>過關紀錄—按「清除全部」可重新編輯指令</span>
                 </div>
                 <div id="program-list" class="flex-1 p-3 bg-gray-50/50 rounded-xl border-2 border-dashed border-gray-200 overflow-y-auto max-h-[380px]"></div>
                 <button id="run-btn" onclick="runProgram()" class="mt-4 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-2xl shadow-lg transition active:scale-95 text-lg">🚀 開始航行</button>
@@ -387,6 +522,52 @@
             <p id="modal-desc" class="text-gray-600 mb-8">成功的抵達了終點。</p>
             <button id="modal-capture-btn" onclick="manualCapture()" class="w-full bg-amber-500 text-white py-3 rounded-xl font-bold hover:bg-amber-600 transition mb-3 flex items-center justify-center gap-2"><span>📷</span> 擷取過關畫面</button>
             <button id="modal-btn" onclick="closeModal()" class="w-full bg-sky-600 text-white py-3 rounded-xl font-bold hover:bg-sky-700 transition">確定</button>
+        </div>
+    </div>
+
+    <!-- 進度代碼視窗 -->
+    <div id="progress-modal" aria-modal="true" role="dialog" aria-labelledby="pc-title">
+        <div class="progress-modal-box">
+            <div class="flex items-center justify-between mb-4">
+                <h2 id="pc-title" class="text-xl font-bold text-gray-800 flex items-center gap-2">📋 進度代碼</h2>
+                <button onclick="closeProgressModal()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+            </div>
+
+            <!-- Tab -->
+            <div class="flex gap-2 mb-4">
+                <button id="pc-tab-export" class="pc-tab-btn active" onclick="switchPcTab('export')">📤 匯出代碼</button>
+                <button id="pc-tab-import" class="pc-tab-btn" onclick="switchPcTab('import')">📥 匯入代碼</button>
+            </div>
+
+            <!-- 匯出面板 -->
+            <div id="pc-export-panel">
+                <!-- 學生資訊預覽 -->
+                <div id="pc-student-info" class="flex items-center gap-2 mb-3 px-3 py-2 bg-sky-50 border border-sky-100 rounded-xl text-xs text-sky-700 font-bold">
+                    <span>👤</span>
+                    <span id="pc-student-display">尚未輸入班級《座號</span>
+                </div>
+                <p class="text-sm text-gray-500 mb-2">複製下方代碼，分享或儲存以紀錄目前的闖關進度與每關使用的積木。</p>
+                <textarea id="progress-code-textarea" readonly spellcheck="false"></textarea>
+                <div class="flex gap-2 mt-3">
+                    <button onclick="copyProgressCode()" class="pc-action-btn bg-sky-500 hover:bg-sky-600 text-white">📋 複製代碼</button>
+                    <button onclick="downloadProgressCode()" class="pc-action-btn bg-slate-100 hover:bg-slate-200 text-slate-600">💾 下載檔案</button>
+                </div>
+            </div>
+
+            <!-- 匯入面板 -->
+            <div id="pc-import-panel" class="hidden">
+                <p class="text-sm text-gray-500 mb-2">貼上進度代碼以還原闖關紀錄（注意：這會覆蓋目前的進度！）</p>
+                <textarea id="import-code-textarea" spellcheck="false" placeholder="在此貼上進度代碼…" class="w-full h-32 font-mono text-xs border-2 border-gray-200 rounded-xl p-3 bg-gray-50 focus:outline-none focus:border-sky-400 resize-none word-break: break-all"></textarea>
+                <button onclick="importProgressCode()" class="pc-action-btn bg-green-500 hover:bg-green-600 text-white mt-3">✅ 套用進度代碼</button>
+            </div>
+
+            <p id="pc-feedback" class="mt-3 text-gray-400"></p>
+
+            <!-- 關卡積木預覽 -->
+            <div class="mt-4 border-t pt-4">
+                <p class="text-xs font-bold text-gray-500 mb-2">📦 已儲存關卡積木紀錄</p>
+                <div id="pc-level-summary" class="space-y-1 max-h-48 overflow-y-auto"></div>
+            </div>
         </div>
     </div>
 
@@ -411,6 +592,7 @@
         let shipIcon = localStorage.getItem('pirate_ship_icon') || '🚢';
         let shipState = { x: 4, y: 8, dir: 0 };
         let program = [];
+        let isProgramLocked = false;   // 已過關則顯示紀錄且鎖定編輯
         let isRunning = false;
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         let isMusicOn = false;
@@ -420,6 +602,14 @@
         let levelStartTime = 0;
         let gameTimerInterval = null;
         let isAutoCapture = localStorage.getItem('pirate_auto_capture') !== 'false';
+
+        // ---- 進度代碼：載入已儲存的關卡積木紀錄 ----
+        // levelPrograms[i] = 第 i 關過關時使用的積木陣列
+        let levelPrograms = JSON.parse(localStorage.getItem('pirate_level_programs') || 'null') || Array(7).fill(null);
+
+        // ---- 學生資訊 ----
+        let studentClass = localStorage.getItem('pirate_student_class') || '';
+        let studentSeat  = localStorage.getItem('pirate_student_seat')  || '';
 
         const playlist = ['bgm1.mp3', 'bgm2.mp3', 'bgm3.mp3', 'bgm4.mp3', 'bgm5.mp3'];
         const bgm = new Audio();
@@ -561,14 +751,33 @@
             shipState = { x: startPos.x, y: startPos.y, dir: 0 };
             document.querySelectorAll('.lvl-btn').forEach((btn, idx) => {
                 const isLocked = idx > unlockedLevel;
-                btn.classList.toggle('lvl-locked', isLocked);
                 btn.innerHTML = `第${['一', '二', '三', '四', '五', '六', '七'][idx]}關${isLocked ? ' 🔒' : ''}`;
-                btn.className = `lvl-btn px-3 py-1 rounded-full text-xs font-bold transition ${idx === index ? 'bg-sky-600 text-white shadow-lg scale-105' : 'bg-gray-100 text-gray-500'}`;
+                // 必須在同一行設定 className，避免覆蓋 lvl-locked
+                if (isLocked) {
+                    btn.className = `lvl-btn lvl-locked px-3 py-1 rounded-full text-xs font-bold transition bg-gray-100 text-gray-400`;
+                } else if (idx === index) {
+                    btn.className = `lvl-btn px-3 py-1 rounded-full text-xs font-bold transition bg-sky-600 text-white shadow-lg scale-105`;
+                } else {
+                    btn.className = `lvl-btn px-3 py-1 rounded-full text-xs font-bold transition bg-gray-100 text-gray-500`;
+                }
             });
             startTimer();
             document.getElementById('level-desc').innerText = `${lvl.name}：${lvl.desc}`;
             document.getElementById('repeat-section').style.display = lvl.showRepeat ? 'block' : 'none';
-            clearProgram();
+
+            // 若此關有過關紀錄，載入積木且鎖定編輯
+            const savedProg = levelPrograms[index];
+            if (savedProg && savedProg.length > 0) {
+                program = JSON.parse(JSON.stringify(savedProg));
+                isProgramLocked = true;
+            } else {
+                program = [];
+                isProgramLocked = false;
+            }
+            applyProgramLockUI();
+            renderProgram();
+            updateCardLimits();
+
             initBoard();
             playSfx(523);
         }
@@ -615,7 +824,7 @@
         const REPEAT_MAP = { 'repeat_2': 2, 'repeat_3': 3 };
 
         function addCommand(type) {
-            if (isRunning) return;
+            if (isRunning || isProgramLocked) return;
             const cmd = { type, wrap: 1 };
             program.push(cmd);
             renderProgram();
@@ -624,7 +833,7 @@
         }
 
         function changeWrap(idx, delta) {
-            if (isRunning) return;
+            if (isRunning || isProgramLocked) return;
             const cmd = program[idx];
             if (!cmd || !REPEAT_MAP[cmd.type]) return;
             cmd.wrap = Math.max(1, Math.min(6, (cmd.wrap || 1) + delta));
@@ -632,8 +841,49 @@
             playSfx(800, 'sine', 0.03);
         }
 
-        function clearProgram() { if (isRunning) return; program = []; renderProgram(); updateCardLimits(); }
-        function popCommand() { if (isRunning || program.length === 0) return; program.pop(); renderProgram(); updateCardLimits(); }
+        function clearProgram() {
+            if (isRunning) return;
+            program = [];
+            isProgramLocked = false;
+            applyProgramLockUI();
+            renderProgram();
+            updateCardLimits();
+        }
+        function popCommand() {
+            if (isRunning || isProgramLocked || program.length === 0) return;
+            program.pop();
+            renderProgram();
+            updateCardLimits();
+        }
+
+        /** 根據 isProgramLocked 更新 UI 狀態 */
+        function applyProgramLockUI() {
+            const banner = document.getElementById('program-locked-banner');
+            const list   = document.getElementById('program-list');
+            const popBtn = document.getElementById('btn-pop');
+            if (isProgramLocked) {
+                banner.classList.add('show');
+                list.classList.add('locked');
+                popBtn.disabled = true;
+                popBtn.classList.add('opacity-30');
+                // 鎖定指令卡片按鈕
+                document.querySelectorAll('#btn-forward,#btn-backward,#btn-left,#btn-right,#btn-shoot').forEach(b => {
+                    b.disabled = true;
+                });
+                document.querySelectorAll('#repeat-section button').forEach(b => {
+                    b.disabled = true;
+                });
+            } else {
+                banner.classList.remove('show');
+                list.classList.remove('locked');
+                popBtn.disabled = false;
+                popBtn.classList.remove('opacity-30');
+                // 指令卡片按鈕由 updateCardLimits 控制，此處只先解除 repeat 的禁用
+                document.querySelectorAll('#repeat-section button').forEach(b => {
+                    b.disabled = false;
+                });
+            }
+        }
 
         function findBlockEnd(track, startIdx, wrapCount) {
             let i = startIdx + 1;
@@ -766,7 +1016,12 @@
             list.scrollTop = list.scrollHeight;
         }
 
-        function removeCommand(index) { if (isRunning) return; program.splice(index, 1); renderProgram(); updateCardLimits(); }
+        function removeCommand(index) {
+            if (isRunning || isProgramLocked) return;
+            program.splice(index, 1);
+            renderProgram();
+            updateCardLimits();
+        }
 
         async function runProgram() {
             if (isRunning || program.length === 0) return;
@@ -945,6 +1200,10 @@
                     unlockedLevel++;
                     localStorage.setItem('pirate_unlocked_level', unlockedLevel);
                 }
+                // ---- 儲存過關積木紀錄 ----
+                levelPrograms[currentLevelIndex] = JSON.parse(JSON.stringify(program));
+                localStorage.setItem('pirate_level_programs', JSON.stringify(levelPrograms));
+
                 stopTimer();
                 const finalTime = document.getElementById('timer-display').innerText;
                 if (isAutoCapture) await captureScreen();
@@ -1068,10 +1327,259 @@
             }
         }
 
+        // ============================================================
+        //  進度代碼 功能
+        // ============================================================
+
+        const CMD_SHORT = { forward:'F', backward:'B', left:'L', right:'R', shoot:'S', repeat_2:'R2', repeat_3:'R3' };
+        const CMD_LONG  = { F:'forward', B:'backward', L:'left', R:'right', S:'shoot', R2:'repeat_2', R3:'repeat_3' };
+        const LEVEL_NAMES = ['一','二','三','四','五','六','七'];
+
+        /** 將 program 陣列序列化為精簡字串，如 "F,L,R2,F,B" */
+        function serializeProgram(prog) {
+            if (!prog || prog.length === 0) return '';
+            return prog.map(c => {
+                const s = CMD_SHORT[c.type] || c.type;
+                // repeat 帶 wrap 數
+                if (c.type === 'repeat_2' || c.type === 'repeat_3') return s + (c.wrap > 1 ? 'w' + c.wrap : '');
+                return s;
+            }).join(',');
+        }
+
+        /** 將精簡字串還原為 program 陣列 */
+        function deserializeProgram(str) {
+            if (!str || !str.trim()) return null;   // 空字串表示未過關，回傳 null
+            const result = str.split(',').map(tok => {
+                // 解析 wrap，例如 "R2w3" → type=repeat_2, wrap=3
+                const wIdx = tok.indexOf('w');
+                let key = tok, wrap = 1;
+                if (wIdx !== -1) { key = tok.slice(0, wIdx); wrap = parseInt(tok.slice(wIdx + 1)) || 1; }
+                const type = CMD_LONG[key];
+                if (!type) return null;
+                return { type, wrap };
+            }).filter(Boolean);
+            return result.length > 0 ? result : null;  // 解析失敗也回傳 null
+        }
+
+        /** 產生進度代碼 (Base64-URL JSON) */
+        function generateProgressCode() {
+            const data = {
+                v: 1,                                          // 版本
+                u: unlockedLevel,                              // 已解鎖到哪關 (0-indexed)
+                g: isGameCleared ? 1 : 0,                     // 是否全通
+                c: studentClass,                               // 班級
+                s: studentSeat,                                // 座號
+                p: levelPrograms.map(prog => serializeProgram(prog))  // 每關積木
+            };
+            const json = JSON.stringify(data);
+            return btoa(unescape(encodeURIComponent(json)))
+                       .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+        }
+
+        /** 解析進度代碼 */
+        function parseProgressCode(code) {
+            try {
+                const padded = code.trim().replace(/-/g, '+').replace(/_/g, '/') +
+                               '==='.slice(0, (4 - code.trim().length % 4) % 4);
+                const json = decodeURIComponent(escape(atob(padded)));
+                const data = JSON.parse(json);
+                if (data.v !== 1) throw new Error('版本不符');
+                return data;
+            } catch(e) {
+                return null;
+            }
+        }
+
+        // ---- Modal 開關 ----
+        let pcCurrentTab = 'export';
+
+        function openProgressModal() {
+            pcCurrentTab = 'export';
+            switchPcTab('export');
+            // 更新學生資訊預覽
+            const cls = studentClass || '（未輸入）';
+            const seat = studentSeat || '（未輸入）';
+            document.getElementById('pc-student-display').innerText = `班級：${cls}　座號：${seat}`;
+            // 產生最新代碼
+            document.getElementById('progress-code-textarea').value = generateProgressCode();
+            renderPcLevelSummary();
+            document.getElementById('pc-feedback').innerText = '';
+            document.getElementById('import-code-textarea').value = '';
+            document.getElementById('progress-modal').classList.add('open');
+        }
+
+        function closeProgressModal() {
+            document.getElementById('progress-modal').classList.remove('open');
+        }
+
+        function switchPcTab(tab) {
+            pcCurrentTab = tab;
+            document.getElementById('pc-export-panel').classList.toggle('hidden', tab !== 'export');
+            document.getElementById('pc-import-panel').classList.toggle('hidden', tab !== 'import');
+            document.getElementById('pc-tab-export').classList.toggle('active', tab === 'export');
+            document.getElementById('pc-tab-import').classList.toggle('active', tab === 'import');
+            document.getElementById('pc-feedback').innerText = '';
+        }
+
+        function copyProgressCode() {
+            const ta = document.getElementById('progress-code-textarea');
+            navigator.clipboard.writeText(ta.value).then(() => {
+                showPcFeedback('✅ 代碼已複製到剪貼簿！', 'text-green-600');
+            }).catch(() => {
+                ta.select();
+                document.execCommand('copy');
+                showPcFeedback('✅ 代碼已複製！', 'text-green-600');
+            });
+        }
+
+        function downloadProgressCode() {
+            const code = document.getElementById('progress-code-textarea').value;
+            const blob = new Blob([code], { type: 'text/plain' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = '尋寶進度代碼.txt';
+            a.click();
+            URL.revokeObjectURL(a.href);
+            showPcFeedback('💾 代碼檔案已下載！', 'text-sky-600');
+        }
+
+        function importProgressCode() {
+            const code = document.getElementById('import-code-textarea').value.trim();
+            if (!code) { showPcFeedback('⚠️ 請先貼上進度代碼。', 'text-amber-600'); return; }
+            const data = parseProgressCode(code);
+            if (!data) { showPcFeedback('❌ 代碼無效或格式錯誤，請確認代碼是否完整。', 'text-red-500'); return; }
+
+            // 套用進度
+            unlockedLevel = Math.min(data.u, customLevels.length - 1);
+            isGameCleared = data.g === 1;
+            // 學生資訊（如代碼內有則覆蓋）
+            if (data.c !== undefined) {
+                studentClass = data.c || '';
+                studentSeat  = data.s || '';
+                localStorage.setItem('pirate_student_class', studentClass);
+                localStorage.setItem('pirate_student_seat',  studentSeat);
+                document.getElementById('input-class').value = studentClass;
+                document.getElementById('input-seat').value  = studentSeat;
+            }
+
+            // 將對應關卡的積木完整覆蓋（空字串 / 解析失敗 → null，明確表示「未過關無紀錄」）
+            const importedPrograms = [];
+            const rawList = data.p || [];
+            for (let i = 0; i < customLevels.length; i++) {
+                const parsed = deserializeProgram(rawList[i] || '');
+                importedPrograms.push(parsed);  // null 或 [{...},...]
+            }
+            levelPrograms = importedPrograms;
+
+            // 寫回 localStorage（完全覆蓋瀏覽器舊紀錄）
+            localStorage.setItem('pirate_unlocked_level', unlockedLevel);
+            localStorage.setItem('pirate_game_cleared', isGameCleared ? 'true' : 'false');
+            localStorage.setItem('pirate_level_programs', JSON.stringify(levelPrograms));
+            // 從 localStorage 重讀以確保記憶體與儲存一致
+            levelPrograms = JSON.parse(localStorage.getItem('pirate_level_programs'));
+
+            if (isGameCleared) document.getElementById('master-badge').classList.remove('hidden');
+
+            showPcFeedback(`✅ 進度已套用！已解鎖到第 ${LEVEL_NAMES[unlockedLevel]} 關。`, 'text-green-600');
+
+            // 立即關閉 modal 並跳到已解鎖的最高關
+            closeProgressModal();
+            playSfx(880, 'sine', 0.15, 0.05);
+            switchLevel(unlockedLevel);
+        }
+
+        function showPcFeedback(msg, cls) {
+            const el = document.getElementById('pc-feedback');
+            el.className = `mt-3 font-bold text-sm text-center ${cls}`;
+            el.innerText = msg;
+        }
+
+        /** 在 modal 底部顯示每關積木摘要 */
+        function renderPcLevelSummary() {
+            const container = document.getElementById('pc-level-summary');
+            container.innerHTML = '';
+            const cmdIcon = { forward:'⬆️', backward:'⬇️', left:'↪️', right:'↩️', shoot:'🎯', repeat_2:'🔁x2', repeat_3:'🔁x3' };
+            customLevels.forEach((lvl, i) => {
+                const prog = levelPrograms[i];
+                const row = document.createElement('div');
+                row.className = 'flex items-start gap-2 text-xs py-1.5 border-b border-gray-100 last:border-0';
+                const label = document.createElement('span');
+                label.className = 'font-bold text-gray-500 w-14 flex-shrink-0';
+                label.innerText = `第${LEVEL_NAMES[i]}關`;
+                const blocks = document.createElement('span');
+                blocks.className = 'text-gray-400 leading-relaxed';
+                if (prog && prog.length > 0) {
+                    blocks.className = 'text-gray-600 leading-relaxed';
+                    blocks.innerText = prog.map(c => {
+                        let icon = cmdIcon[c.type] || c.type;
+                        if ((c.type==='repeat_2'||c.type==='repeat_3') && c.wrap > 1) icon += ` 包${c.wrap}`;
+                        return icon;
+                    }).join('  ');
+                } else {
+                    blocks.innerText = i <= unlockedLevel ? '（未儲存積木）' : '🔒 未解鎖';
+                }
+                row.appendChild(label);
+                row.appendChild(blocks);
+                container.appendChild(row);
+            });
+        }
+
+        /** 學生輸入事件：即時儲存到 localStorage */
+        function saveStudentInfo() {
+            studentClass = document.getElementById('input-class').value.trim();
+            studentSeat  = document.getElementById('input-seat').value.trim();
+            localStorage.setItem('pirate_student_class', studentClass);
+            localStorage.setItem('pirate_student_seat',  studentSeat);
+        }
+
+        // 點擊背景關閉
+        document.getElementById('progress-modal').addEventListener('click', function(e) {
+            if (e.target === this) closeProgressModal();
+        });
+
         window.onload = () => {
             if (audioCtx.state === 'suspended') audioCtx.resume();
             isMusicOn = true; toggleMusic();
             updateCaptureUI();
+
+            // ---- 教師查看模式：偵測 URL 參數 studentCode ----
+            const urlParams = new URLSearchParams(window.location.search);
+            const codeParam = urlParams.get('studentCode');
+            if (codeParam) {
+                const data = parseProgressCode(codeParam);
+                if (data) {
+                    // 靜默套用（不顯示 modal）
+                    unlockedLevel = Math.min(data.u || 0, customLevels.length - 1);
+                    isGameCleared = data.g === 1;
+                    if (data.c !== undefined) {
+                        studentClass = data.c || '';
+                        studentSeat  = data.s || '';
+                    }
+                    const rawList = data.p || [];
+                    levelPrograms = [];
+                    for (let i = 0; i < customLevels.length; i++) {
+                        levelPrograms.push(deserializeProgram(rawList[i] || ''));
+                    }
+                    localStorage.setItem('pirate_unlocked_level', unlockedLevel);
+                    localStorage.setItem('pirate_game_cleared', isGameCleared ? 'true' : 'false');
+                    localStorage.setItem('pirate_level_programs', JSON.stringify(levelPrograms));
+                    localStorage.setItem('pirate_student_class', studentClass);
+                    localStorage.setItem('pirate_student_seat',  studentSeat);
+                    levelPrograms = JSON.parse(localStorage.getItem('pirate_level_programs'));
+
+                    // 顯示教師查看橫幅
+                    const banner = document.createElement('div');
+                    banner.id = 'teacher-view-banner';
+                    banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:300;background:linear-gradient(90deg,#0369a1,#0284c7);color:white;text-align:center;padding:0.45rem 1rem;font-size:0.8rem;font-weight:bold;display:flex;align-items:center;justify-content:center;gap:0.75rem;';
+                    banner.innerHTML = `<span>👁️ 教師查看模式 — 學生：${studentClass} / ${studentSeat}</span><a href="teacher.html" style="background:rgba(255,255,255,0.2);padding:0.2rem 0.75rem;border-radius:0.5rem;text-decoration:none;color:white;font-size:0.75rem;">← 返回評分管理</a>`;
+                    document.body.prepend(banner);
+                    document.body.style.paddingTop = '2.2rem';
+                }
+            }
+
+            // 載入學生資訊到輸入框
+            document.getElementById('input-class').value = studentClass;
+            document.getElementById('input-seat').value  = studentSeat;
             switchLevel(currentLevelIndex);
         };
     </script>
