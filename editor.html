@@ -487,7 +487,7 @@
 
         function exportMap() {
             if (!mapData.startPos || !mapData.endPos) {
-                showToast('❌ 請設定起點與終點', '⚠️');
+                alert('⚠️ 警告：地圖上缺少起點（🚩）或終點（💰）！\n\n請在編輯器中先設定起點與終點，然後再執行匯出。');
                 return;
             }
             updateLimits(); // 確保最新數值被包含
@@ -562,7 +562,7 @@
 
         function launchCustomGame() {
             if (!mapData.startPos || !mapData.endPos) {
-                showToast('❌ 請設定起點與終點', '⚠️');
+                alert('⚠️ 警告：地圖上缺少起點（🚩）或終點（💰）！\n\n請在編輯器中先設定起點與終點，然後再開始測試。');
                 return;
             }
             mapData.name = document.getElementById('map-name-input').value.trim() || '自訂關卡';
@@ -587,6 +587,10 @@
         };
 
         function saveMap() {
+            if (!mapData.startPos || !mapData.endPos) {
+                alert('⚠️ 警告：地圖上缺少起點（🚩）或終點（💰）！\n\n請在編輯器中先設定起點與終點，然後再儲存地圖。');
+                return;
+            }
             const nameInput = document.getElementById('map-name-input');
             const descInput = document.getElementById('map-desc-input');
             const name = nameInput.value.trim() || `未命名地圖 ${new Date().toLocaleDateString()}`;
