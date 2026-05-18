@@ -260,8 +260,8 @@
             background: #0ea5e9;
             cursor: pointer;
         }
-        /* Progress Code Modal */
-        #progress-modal {
+        /* Progress Code Modal & Reset Modal */
+        #progress-modal, #reset-modal {
             display: none;
             position: fixed;
             inset: 0;
@@ -271,8 +271,8 @@
             justify-content: center;
             padding: 1rem;
         }
-        #progress-modal.open { display: flex; }
-        .progress-modal-box {
+        #progress-modal.open, #reset-modal.open { display: flex; }
+        .progress-modal-box, .modal-content {
             background: white;
             border-radius: 1.5rem;
             padding: 2rem;
@@ -280,6 +280,9 @@
             width: 100%;
             box-shadow: 0 25px 60px rgba(0,0,0,0.3);
             border-top: 6px solid #0ea5e9;
+        }
+        #reset-modal .modal-content {
+            border-top-color: #ef4444; /* 統一改成紅色邊框 */
         }
         #progress-code-textarea {
             width: 100%;
@@ -387,6 +390,10 @@
                     👑 傳奇航海家</div>
             </div>
             <div class="flex items-center gap-2">
+                <button onclick="promptClearAllData()"
+                    class="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs font-bold rounded-xl transition shadow-sm"
+                    title="清除所有過關進度與班級座號鎖定">
+                    🗑️ 重置紀錄</button>
                 <button onclick="openProgressModal()"
                     class="px-3 py-1.5 bg-sky-500 hover:bg-sky-600 text-white text-xs font-bold rounded-xl transition shadow-sm flex items-center gap-1">
                     📋 進度代碼</button>
@@ -571,6 +578,43 @@
         </div>
     </div>
 
+    <!-- 🗑️ 重置確認 Modal -->
+    <div id="reset-modal" class="modal-overlay">
+        <div class="modal-content w-full max-w-sm">
+            <div id="reset-step-1">
+                <div class="text-center">
+                    <div class="text-5xl mb-4">⚠️</div>
+                    <h2 class="text-xl font-black text-slate-800 mb-2">確定要重置嗎？</h2>
+                    <p class="text-sm text-slate-600 mb-6 text-left">
+                        這將會清除您目前所有的闖關進度、積木紀錄以及鎖定的班級座號資訊！<br><br>
+                        <span class="text-amber-600 font-bold">💡 提示：如果您輸入了錯誤的代碼導致被鎖定，才建議使用此功能。</span>
+                    </p>
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="closeResetModal()" class="flex-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl transition">取消</button>
+                    <button onclick="showResetStep2()" class="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl transition shadow-md shadow-red-200">下一步</button>
+                </div>
+            </div>
+
+            <div id="reset-step-2" class="hidden">
+                <div class="text-center">
+                    <div class="text-5xl mb-4 animate-pulse">🚨</div>
+                    <h2 class="text-xl font-black text-red-600 mb-2">這是最後的確認！</h2>
+                    <div class="p-3 bg-red-50 border border-red-100 rounded-xl mb-6 text-left">
+                        <p class="text-sm text-red-800 font-bold">所有的資料都將被清除且無法復原。</p>
+                        <p class="text-xs text-red-600 mt-1">點擊「確定清除」將立刻清除所有資料並重新載入頁面。</p>
+                    </div>
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="closeResetModal()" class="flex-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl transition">取消</button>
+                    <button onclick="executeResetData()" class="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition shadow-lg shadow-red-200 flex items-center justify-center gap-1">
+                        <span>🗑️</span> 確定清除
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         // --- 核心定義 ---
         const GRID_SIZE = 9;
@@ -610,6 +654,7 @@
         // ---- 學生資訊 ----
         let studentClass = localStorage.getItem('pirate_student_class') || '';
         let studentSeat  = localStorage.getItem('pirate_student_seat')  || '';
+        let isStudentLocked = localStorage.getItem('pirate_student_locked') === 'true';
 
         const playlist = ['bgm1.mp3', 'bgm2.mp3', 'bgm3.mp3', 'bgm4.mp3', 'bgm5.mp3'];
         const bgm = new Audio();
@@ -1475,6 +1520,12 @@
             localStorage.setItem('pirate_unlocked_level', unlockedLevel);
             localStorage.setItem('pirate_game_cleared', isGameCleared ? 'true' : 'false');
             localStorage.setItem('pirate_level_programs', JSON.stringify(levelPrograms));
+            
+            // 匯入後鎖死學生資訊，防止篡改他人代碼
+            isStudentLocked = true;
+            localStorage.setItem('pirate_student_locked', 'true');
+            applyStudentLockUI();
+
             // 從 localStorage 重讀以確保記憶體與儲存一致
             levelPrograms = JSON.parse(localStorage.getItem('pirate_level_programs'));
 
@@ -1526,10 +1577,24 @@
 
         /** 學生輸入事件：即時儲存到 localStorage */
         function saveStudentInfo() {
+            if (isStudentLocked) return;
             studentClass = document.getElementById('input-class').value.trim();
             studentSeat  = document.getElementById('input-seat').value.trim();
             localStorage.setItem('pirate_student_class', studentClass);
             localStorage.setItem('pirate_student_seat',  studentSeat);
+        }
+
+        function applyStudentLockUI() {
+            const cInput = document.getElementById('input-class');
+            const sInput = document.getElementById('input-seat');
+            if (isStudentLocked) {
+                cInput.disabled = true;
+                sInput.disabled = true;
+                cInput.classList.add('opacity-50', 'cursor-not-allowed');
+                sInput.classList.add('opacity-50', 'cursor-not-allowed');
+                cInput.title = "已套用匯入進度，無法更改班級座號";
+                sInput.title = "已套用匯入進度，無法更改班級座號";
+            }
         }
 
         // 點擊背景關閉
@@ -1580,8 +1645,41 @@
             // 載入學生資訊到輸入框
             document.getElementById('input-class').value = studentClass;
             document.getElementById('input-seat').value  = studentSeat;
+            applyStudentLockUI();
             switchLevel(currentLevelIndex);
         };
+
+        /** 重置所有資料（自訂 Modal 雙重確認） */
+        function promptClearAllData() {
+            document.getElementById('reset-step-1').classList.remove('hidden');
+            document.getElementById('reset-step-2').classList.add('hidden');
+            document.getElementById('reset-modal').classList.add('open');
+        }
+
+        function closeResetModal() {
+            document.getElementById('reset-modal').classList.remove('open');
+        }
+
+        function showResetStep2() {
+            document.getElementById('reset-step-1').classList.add('hidden');
+            document.getElementById('reset-step-2').classList.remove('hidden');
+        }
+
+        function executeResetData() {
+            localStorage.removeItem('pirate_unlocked_level');
+            localStorage.removeItem('pirate_game_cleared');
+            localStorage.removeItem('pirate_level_programs');
+            localStorage.removeItem('pirate_student_class');
+            localStorage.removeItem('pirate_student_seat');
+            localStorage.removeItem('pirate_student_locked');
+            // 重新載入頁面並清除網址參數
+            window.location.href = window.location.pathname;
+        }
+
+        // 點擊背景關閉（除了重置 modal，因為我們希望他們點按鈕）
+        document.getElementById('reset-modal').addEventListener('click', function(e) {
+            if (e.target === this) closeResetModal();
+        });
     </script>
 </body>
 
