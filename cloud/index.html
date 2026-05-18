@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>找到寶藏吧！邏輯遊戲</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="config.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap');
+
+        body {
+            font-family: 'Noto Sans TC', Arial, sans-serif;
+            background-color: #0ea5e9;
+            background-image: radial-gradient(#38bdf8 1px, transparent 1px);
+            background-size: 30px 30px;
+        }
+
+        .ship-option {
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 4px solid transparent;
+            filter: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.2));
+        }
+
+        .ship-option:hover {
+            transform: translateY(-10px) scale(1.05);
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .ship-option.selected {
+            border-color: #fbbf24;
+            background-color: rgba(255, 255, 255, 0.25);
+            transform: scale(1.1);
+            box-shadow: 0 0 30px rgba(251, 191, 36, 0.4);
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-15px);
+            }
+        }
+
+        .floating-ship {
+            animation: float 4s ease-in-out infinite;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen flex items-center justify-center p-6">
+
+    <div class="max-w-4xl w-full text-white text-center">
+        <div class="mb-12">
+            <span class="text-6xl mb-6 block floating-ship">🚢</span>
+            <h1 class="text-5xl font-black mb-4 tracking-tight">找到寶藏吧！</h1>
+            <p class="text-sky-100 text-xl font-medium opacity-90">訓練邏輯思維的程式冒險遊戲</p>
+        </div>
+
+        <div class="glass-panel p-10 rounded-[40px] shadow-2xl mb-10">
+            <h2 class="text-2xl font-bold mb-8 flex items-center justify-center gap-2">
+                <span>⚓ 選擇你的冒險船隻</span>
+            </h2>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-10">
+                <div onclick="selectShip('🚢', 0)" class="ship-option bg-white/10 p-8 rounded-3xl text-7xl selected"
+                    id="opt-0">🚢</div>
+                <div onclick="selectShip('⛵', 1)" class="ship-option bg-white/10 p-8 rounded-3xl text-7xl" id="opt-1">⛵
+                </div>
+                <div onclick="selectShip('🛥️', 2)" class="ship-option bg-white/10 p-8 rounded-3xl text-7xl" id="opt-2">
+                    🛥️</div>
+                <div onclick="selectShip('🛶', 3)" class="ship-option bg-white/10 p-8 rounded-3xl text-7xl" id="opt-3">
+                    🛶</div>
+            </div>
+
+            <!-- 🔑 學生身分登入門戶 (Google Sheets) -->
+            <div class="max-w-md mx-auto bg-white/10 p-6 rounded-3xl border border-white/15 mb-8 text-left space-y-4">
+                <h3 class="text-lg font-bold text-center text-yellow-300 flex items-center justify-center gap-2">
+                    <span>☁️ 學生雲端登入與註冊</span>
+                </h3>
+                <p class="text-xs text-sky-200 text-center">輸入資料後點擊「進入遊戲」，若查無帳號將為您自動註冊新帳號！</p>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs text-sky-200 font-bold mb-1">班級</label>
+                        <input type="text" id="student-class" placeholder="例如 301" class="w-full px-4 py-2.5 bg-slate-900/60 border border-white/20 rounded-xl text-white font-bold text-center focus:outline-none focus:border-yellow-400 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-sky-200 font-bold mb-1">座號</label>
+                        <input type="text" id="student-seat" placeholder="例如 08" class="w-full px-4 py-2.5 bg-slate-900/60 border border-white/20 rounded-xl text-white font-bold text-center focus:outline-none focus:border-yellow-400 text-sm">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs text-sky-200 font-bold mb-1">🔑 6位數安全鎖 PIN 碼</label>
+                    <input type="password" id="student-pin" maxlength="6" placeholder="例如 123456" class="w-full px-4 py-2.5 bg-slate-900/60 border border-white/20 rounded-xl text-white font-bold text-center focus:outline-none focus:border-yellow-400 text-sm tracking-widest">
+                </div>
+            </div>
+
+            <button onclick="startGame()"
+                class="w-full sm:w-auto bg-yellow-400 text-sky-900 px-16 py-5 rounded-2xl text-2xl font-black shadow-[0_10px_25px_rgba(251,191,36,0.4)] hover:bg-yellow-300 hover:scale-105 transition-all active:scale-95 mb-10">
+                🎮 進入冒險遊戲
+            </button>
+
+            <div class="flex flex-col sm:flex-row justify-center gap-4">
+                <a href="custom.html"
+                    class="bg-sky-500/80 text-white px-10 py-4 rounded-2xl text-lg font-bold border border-white/20 hover:bg-sky-400 transition-all flex items-center justify-center gap-2">
+                    🌊 自訂挑戰
+                </a>
+                <a href="editor.html"
+                    class="bg-sky-700/50 text-white px-10 py-4 rounded-2xl text-lg font-bold border border-white/10 hover:bg-sky-600 transition-all flex items-center justify-center gap-2">
+                    🛠️ 地圖編輯器
+                </a>
+            </div>
+        </div>
+
+        <div class="mb-4 flex justify-center gap-3">
+            <a href="tutorial.html"
+                class="inline-flex items-center gap-2 px-6 py-2 bg-white/20 hover:bg-white/30 text-white rounded-full text-sm font-bold backdrop-blur-sm transition-all border border-white/10">
+                📖 遊戲說明指南
+            </a>
+            <a href="teacher.html"
+                class="inline-flex items-center gap-2 px-6 py-2 bg-slate-800/40 hover:bg-slate-800/60 text-white rounded-full text-sm font-bold backdrop-blur-sm transition-all border border-slate-700/50">
+                👨‍🏫 教師管理
+            </a>
+        </div>
+
+        <p class="text-sky-200/60 text-sm font-medium">
+            本遊戲靈感來自程式邏輯桌遊<span class="font-bold text-yellow-400">《Coding Ocean：海霸》</span><br>
+            背景音樂由<a class="text-sky-300" href="https://pixabay.com/zh/music/search/ocean/">Pixabay</a>提供<br>
+            <span class="text-xs opacity-70 mt-2 block">發布日期：2026-05-18</span>
+            <span class="text-xs opacity-70 mt-2 block">版本：V3.0</span>
+
+        </p>
+    </div>
+
+    <!-- 🌟 美化自訂 Modal 彈窗 -->
+    <div id="custom-modal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-4 opacity-0 pointer-events-none transition-all duration-300 z-[9999]">
+        <div class="glass-panel max-w-md w-full bg-slate-900/90 border border-white/20 rounded-[32px] p-8 text-center shadow-[0_20px_50px_rgba(0,0,0,0.5)] transform scale-95 transition-all duration-300" id="custom-modal-content">
+            <div class="w-20 h-20 bg-yellow-400/20 text-yellow-400 rounded-full flex items-center justify-center text-4xl mx-auto mb-6 shadow-[0_0_20px_rgba(251,191,36,0.2)] animate-bounce" id="modal-icon">✨</div>
+            <h3 class="text-2xl font-black text-white mb-3" id="modal-title">標題</h3>
+            <p class="text-sky-200/90 text-sm leading-relaxed mb-8 whitespace-pre-line" id="modal-message">內文訊息</p>
+            <button onclick="closeCustomModal()" class="w-full bg-yellow-400 text-sky-900 py-4 px-8 rounded-2xl text-lg font-black shadow-[0_8px_20px_rgba(251,191,36,0.3)] hover:bg-yellow-300 hover:scale-[1.02] active:scale-[0.98] transition-all" id="modal-btn">
+                🚢 開始航行！
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let selectedIcon = '🚢';
+        let modalOnConfirmCallback = null;
+
+        // 顯示高質感自訂彈窗
+        function showCustomModal(title, message, icon = '✨', buttonText = '🚢 開始航行！', onConfirm = null) {
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-message').textContent = message;
+            document.getElementById('modal-icon').textContent = icon;
+            document.getElementById('modal-btn').textContent = buttonText;
+            modalOnConfirmCallback = onConfirm;
+
+            const modal = document.getElementById('custom-modal');
+            const content = document.getElementById('custom-modal-content');
+            
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            content.classList.remove('scale-95');
+            content.classList.add('scale-100');
+        }
+
+        // 關閉自訂彈窗並執行回調
+        function closeCustomModal() {
+            const modal = document.getElementById('custom-modal');
+            const content = document.getElementById('custom-modal-content');
+            
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            content.classList.remove('scale-100');
+            content.classList.add('scale-95');
+
+            if (modalOnConfirmCallback) {
+                modalOnConfirmCallback();
+                modalOnConfirmCallback = null;
+            }
+        }
+
+        function selectShip(icon, id) {
+            selectedIcon = icon;
+            document.querySelectorAll('.ship-option').forEach(el => el.classList.remove('selected'));
+            document.getElementById(`opt-${id}`).classList.add('selected');
+
+            // 播放簡單的按鈕音效 (如果需要)
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.frequency.setValueAtTime(440, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.1);
+            } catch (e) { }
+        }
+
+        function startGame() {
+            localStorage.setItem('pirate_ship_icon', selectedIcon);
+            
+            // 雲端版身分驗證流程
+            if (!window.CONFIG || !CONFIG.GOOGLE_SHEETS_API_URL) {
+                showCustomModal('⚠️ 設定未完成', '雲端設定尚未完成，請先聯絡老師設定 config.js！', '⚠️', '好的');
+                return;
+            }
+            
+            const cls = document.getElementById('student-class').value.trim();
+            const seat = document.getElementById('student-seat').value.trim();
+            const pin = document.getElementById('student-pin').value.trim();
+            
+            if (!cls || !seat || pin.length !== 6 || isNaN(pin)) {
+                showCustomModal('⚠️ 欄位填寫不完整', '請確認您已填寫「班級」、「座號」與「6位數字 PIN 碼」！', '⚠️', '確認並填寫');
+                return;
+            }
+            
+            // 先儲存本地資訊方便跨頁面讀取
+            localStorage.setItem('pirate_student_class', cls);
+            localStorage.setItem('pirate_student_seat', seat);
+            localStorage.setItem('pirate_student_pin', pin);
+            
+            const btn = document.querySelector('button[onclick="startGame()"]');
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span>⏳ 雲端驗證中...</span>';
+            
+            // 向 GAS 查詢是否有該學生的紀錄
+            const url = `${CONFIG.GOOGLE_SHEETS_API_URL}?action=get_student_record&class=${encodeURIComponent(cls)}&seat=${encodeURIComponent(seat)}&pin=${encodeURIComponent(pin)}`;
+            
+            fetch(url, { mode: 'cors' })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    if (data.found) {
+                        // 1. 已有學生：將進度資料載入並覆蓋本地進度
+                        localStorage.setItem('pirate_progress_code', data.data.progressCode);
+                        
+                        // 解析並覆蓋到本機解鎖紀錄
+                        try {
+                            const padded = data.data.progressCode.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice(0, (4 - data.data.progressCode.length % 4) % 4);
+                            const json = decodeURIComponent(escape(atob(padded)));
+                            const parsed = JSON.parse(json);
+                            if (parsed.v === 1) {
+                                localStorage.setItem('pirate_unlocked_level', parsed.u);
+                                localStorage.setItem('pirate_game_cleared', parsed.g ? 'true' : 'false');
+                                // 覆蓋各關程式序列
+                                const pList = parsed.p || [];
+                                for (let i = 0; i < pList.length; i++) {
+                                    if (pList[i]) {
+                                        localStorage.setItem(`pirate_level_${i}_program`, pList[i]);
+                                    } else {
+                                        localStorage.removeItem(`pirate_level_${i}_program`);
+                                    }
+                                }
+                            }
+                        } catch (e) {
+                            console.error('Failed to parse synchronized progress code:', e);
+                        }
+                        
+                        btn.disabled = false;
+                        btn.innerHTML = originalText;
+                        
+                        showCustomModal(
+                            '👋 歡迎回來！', 
+                            `親愛的 ${cls} 班 ${seat} 號船長：\n\n已成功從雲端同步載入您先前的冒險進度！\n準備好繼續航向偉大航道了嗎？`, 
+                            '⚓', 
+                            '🚢 開始航行！', 
+                            () => { location.href = 'adventure.html'; }
+                        );
+                    } else {
+                        // 2. 查無此人：自動新增該名學生 (建立一筆全新 level-0 進度存檔)
+                        const freshProgress = {
+                            v: 1,
+                            c: cls,
+                            s: seat,
+                            u: 0,
+                            g: 0,
+                            p: []
+                        };
+                        const freshCode = btoa(unescape(encodeURIComponent(JSON.stringify(freshProgress))))
+                            .replace(/\+/g, '-')
+                            .replace(/\//g, '_')
+                            .replace(/=+$/, '');
+                        
+                        // 呼叫 POST 同步以註冊新帳號
+                        fetch(CONFIG.GOOGLE_SHEETS_API_URL, {
+                            method: 'POST',
+                            mode: 'cors',
+                            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                            body: JSON.stringify({
+                                action: 'submit_record',
+                                class: cls,
+                                seat: seat,
+                                pin: pin,
+                                code: freshCode
+                            })
+                        })
+                        .then(regRes => regRes.json())
+                        .then(regData => {
+                            btn.disabled = false;
+                            btn.innerHTML = originalText;
+                            
+                            if (regData.status === 'success') {
+                                localStorage.setItem('pirate_progress_code', freshCode);
+                                localStorage.setItem('pirate_unlocked_level', '0');
+                                localStorage.setItem('pirate_game_cleared', 'false');
+                                // 清空舊本機紀錄以利新學生遊玩
+                                for (let i = 0; i < 7; i++) {
+                                    localStorage.removeItem(`pirate_level_${i}_program`);
+                                }
+                                
+                                showCustomModal(
+                                    '✨ 註冊成功！', 
+                                    `歡迎新船長 ${cls} 班 ${seat} 號！\n\n系統已自動在雲端為您開戶並綁定此 6 位數安全 PIN 碼。\n這將是您專屬的冒險進度密碼鎖！`, 
+                                    '🏆', 
+                                    '⚓ 啟航開始冒險！', 
+                                    () => { location.href = 'adventure.html'; }
+                                );
+                            } else {
+                                showCustomModal('❌ 註冊失敗', regData.message || '未知錯誤', '❌', '重新嘗試');
+                            }
+                        })
+                        .catch(err => {
+                            btn.disabled = false;
+                            btn.innerHTML = originalText;
+                            console.error('Registration error:', err);
+                            showCustomModal('❌ 註冊連線失敗', '無法與伺服器進行註冊連線，請檢查網路連線。', '❌', '確定');
+                        });
+                    }
+                } else {
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                    showCustomModal('❌ 驗證失敗', data.message || '未知錯誤', '❌', '重新嘗試');
+                }
+            })
+            .catch(err => {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+                console.error('Login check error:', err);
+                showCustomModal('❌ 連線至雲端失敗', '連線至雲端伺服器失敗，請檢查網路連線或確認 Apps Script 部署 URL。', '❌', '好的');
+            });
+        }
+
+        // 初始化檢查
+        window.onload = () => {
+            const savedIcon = localStorage.getItem('pirate_ship_icon');
+            if (savedIcon) {
+                const icons = ['🚢', '⛵', '🛥️', '🛶'];
+                const idx = icons.indexOf(savedIcon);
+                if (idx !== -1) selectShip(savedIcon, idx);
+            }
+            
+            // 預填之前登入過的學生成員資訊自 localStorage
+            const cls = localStorage.getItem('pirate_student_class') || '';
+            const seat = localStorage.getItem('pirate_student_seat') || '';
+            const pin = localStorage.getItem('pirate_student_pin') || '';
+            document.getElementById('student-class').value = cls;
+            document.getElementById('student-seat').value = seat;
+            document.getElementById('student-pin').value = pin;
+        };
+    </script>
+</body>
+
+</html>

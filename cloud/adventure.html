@@ -1,0 +1,1851 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>闖關冒險 - 找到寶藏吧！</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dom-to-image/2.6.0/dom-to-image.min.js"></script>
+    <script src="config.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap');
+
+        body {
+            font-family: 'Noto Sans TC', Arial, sans-serif;
+            background-color: #f0f9ff;
+            touch-action: manipulation;
+            overflow-x: hidden;
+        }
+
+        .grid-cell {
+            aspect-ratio: 1 / 1;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        .ocean-bg {
+            background-color: #0ea5e9;
+            background-image: radial-gradient(#38bdf8 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        .cell-object {
+            position: absolute;
+            z-index: 10;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+        }
+
+        .ship-wrapper {
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 50;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+        }
+
+        .direction-arrow-container {
+            position: absolute;
+            z-index: 60;
+            transition: all 0.3s ease-out;
+            pointer-events: none;
+        }
+
+        .direction-arrow {
+            width: 0;
+            height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-bottom: 10px solid #fbbf24;
+            filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.3));
+            animation: bounce 0.8s infinite alternate;
+        }
+
+        @keyframes bounce {
+            from { transform: scale(1); opacity: 0.8; }
+            to { transform: scale(1.3); opacity: 1; }
+        }
+
+        .arrow-pos-0 { top: 4px; left: 50%; transform: translateX(-50%) rotate(0deg); }
+        .arrow-pos-1 { right: 4px; top: 50%; transform: translateY(-50%) rotate(90deg); }
+        .arrow-pos-2 { bottom: 4px; left: 50%; transform: translateX(-50%) rotate(180deg); }
+        .arrow-pos-3 { left: 4px; top: 50%; transform: translateY(-50%) rotate(270deg); }
+
+        .card-active:active:not(:disabled) { transform: scale(0.95); }
+
+        .water-ripple {
+            position: absolute;
+            width: 70%;
+            height: 70%;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            animation: ripple 2s infinite;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        @keyframes ripple {
+            0% { transform: scale(0.5); opacity: 1; }
+            100% { transform: scale(1.4); opacity: 0; }
+        }
+
+        .repeat-badge {
+            background-color: white;
+            color: #ea580c;
+            border-radius: 4px;
+            padding: 1px 4px;
+            font-size: 0.7rem;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        .floating {
+            animation: floating 3s ease-in-out infinite;
+        }
+
+        @keyframes floating {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-6px); }
+        }
+
+        .teleport-in { animation: teleport-in 0.8s ease-in forwards; }
+        @keyframes teleport-in {
+            0% { transform: scale(1) rotate(0deg); opacity: 1; }
+            100% { transform: scale(0) rotate(720deg); opacity: 0; }
+        }
+
+        .teleport-out { animation: teleport-out 0.8s ease-out forwards; }
+        @keyframes teleport-out {
+            0% { transform: scale(0) rotate(-720deg); opacity: 0; }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+
+        .lvl-locked {
+            filter: grayscale(1);
+            opacity: 0.5;
+            cursor: not-allowed !important;
+        }
+
+        #program-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            align-content: start;
+        }
+
+        .repeat-block {
+            border: 2px solid #fb923c;
+            background: rgba(251, 146, 60, 0.05);
+            border-radius: 1rem;
+            padding: 8px;
+            margin-bottom: 4px;
+            position: relative;
+            transition: all 0.3s;
+        }
+
+        .repeat-block.executing {
+            border-color: #f59e0b !important;
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.25);
+            background: rgba(245, 158, 11, 0.08) !important;
+        }
+
+        .repeat-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #f97316;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 0.75rem;
+            font-weight: bold;
+            margin-bottom: 8px;
+            transition: all 0.3s;
+        }
+
+        .repeat-header.executing {
+            background: linear-gradient(135deg, #fbbf24, #f59e0b) !important;
+            color: #1e3a8a !important;
+            transform: scale(1.02);
+            box-shadow: 0 0 12px rgba(245, 158, 11, 0.5);
+            z-index: 10;
+        }
+
+        .repeat-header.executing .step-number {
+            background-color: rgba(30, 58, 138, 0.2) !important;
+            border-color: rgba(30, 58, 138, 0.4) !important;
+            color: #1e3a8a !important;
+            font-weight: 900 !important;
+        }
+
+        .repeat-iteration-badge {
+            animation: pulse-glow 1.5s infinite alternate;
+        }
+        @keyframes pulse-glow {
+            0% { box-shadow: 0 0 2px rgba(255, 255, 255, 0.4); }
+            100% { box-shadow: 0 0 8px rgba(255, 255, 255, 0.8); }
+        }
+
+        .repeat-body {
+            padding-left: 16px;
+            border-left: 2px dashed #fdba74;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .command-card {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.6rem;
+            border-radius: 0.75rem;
+            color: white;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            animation: slideIn 0.3s ease-out;
+            transition: all 0.3s;
+        }
+
+        .command-card.executing {
+            background-color: #fbbf24 !important;
+            color: #1e3a8a;
+            transform: scale(1.05);
+            box-shadow: 0 0 15px #fbbf24;
+            z-index: 10;
+        }
+
+        .step-number {
+            background-color: rgba(0, 0, 0, 0.25);
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            flex-shrink: 0;
+            margin-right: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        input[type=range] {
+            height: 6px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 18px;
+            width: 18px;
+            border-radius: 50%;
+            background: #0ea5e9;
+            cursor: pointer;
+        }
+        /* Progress Code Modal & Reset Modal */
+        #progress-modal, #reset-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.65);
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+        #progress-modal.open, #reset-modal.open { display: flex; }
+        .progress-modal-box, .modal-content {
+            background: white;
+            border-radius: 1.5rem;
+            padding: 2rem;
+            max-width: 480px;
+            width: 100%;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.3);
+            border-top: 6px solid #0ea5e9;
+        }
+        #reset-modal .modal-content {
+            border-top-color: #ef4444; /* 統一改成紅色邊框 */
+        }
+        #progress-code-textarea {
+            width: 100%;
+            height: 120px;
+            font-family: monospace;
+            font-size: 0.78rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 0.75rem;
+            padding: 0.75rem;
+            resize: none;
+            background: #f8fafc;
+            color: #334155;
+            word-break: break-all;
+            transition: border-color 0.2s;
+        }
+        #progress-code-textarea:focus { outline: none; border-color: #0ea5e9; }
+        .pc-tab-btn {
+            flex: 1;
+            padding: 0.5rem;
+            font-weight: bold;
+            font-size: 0.85rem;
+            border-radius: 0.5rem;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+        }
+        .pc-tab-btn.active {
+            background: #0ea5e9;
+            color: white;
+            border-color: #0284c7;
+        }
+        .pc-tab-btn:not(.active) {
+            background: #f1f5f9;
+            color: #64748b;
+        }
+        .pc-action-btn {
+            width: 100%;
+            padding: 0.75rem;
+            border-radius: 0.75rem;
+            font-weight: bold;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        #pc-feedback {
+            font-size: 0.8rem;
+            min-height: 1.2rem;
+            text-align: center;
+            transition: opacity 0.3s;
+        }
+        /* 已過關鎖定樣式 */
+        #program-locked-banner {
+            display: none;
+            align-items: center;
+            gap: 0.5rem;
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+            border: 1.5px solid #f59e0b;
+            border-radius: 0.75rem;
+            padding: 0.5rem 0.9rem;
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: #92400e;
+            margin-bottom: 0.5rem;
+        }
+        #program-locked-banner.show { display: flex; }
+        #program-list.locked {
+            opacity: 0.82;
+            pointer-events: none;  /* 封鎖內部所有按鈕（包括小 x 删除、wrap +-） */
+            user-select: none;
+        }
+        /* 學生資訊輸入框 */
+        .student-input {
+            width: 5.5rem;
+            padding: 0.25rem 0.5rem;
+            border: 1.5px solid #bae6fd;
+            border-radius: 0.5rem;
+            font-size: 0.78rem;
+            font-weight: bold;
+            color: #0369a1;
+            background: #f0f9ff;
+            text-align: center;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            outline: none;
+        }
+        .student-input:focus {
+            border-color: #0ea5e9;
+            box-shadow: 0 0 0 2px rgba(14,165,233,0.15);
+        }
+    </style>
+</head>
+
+<body class="min-h-screen flex flex-col items-center p-4">
+
+    <!-- 頁首面板 -->
+    <header class="text-center mb-6 w-full max-w-4xl">
+
+        <!-- 第一排：標題 + 操作按鈕 -->
+        <div class="flex flex-wrap justify-between items-center mb-3 gap-3 px-2">
+            <div class="flex items-center gap-3">
+                <h1 class="text-2xl font-bold text-sky-800">找到寶藏吧！闖關冒險</h1>
+                <div id="master-badge"
+                    class="hidden bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-3 py-1 rounded-full text-[10px] font-bold shadow-sm animate-bounce">
+                    👑 傳奇航海家</div>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="promptClearAllData()"
+                    class="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs font-bold rounded-xl transition shadow-sm"
+                    title="清除所有過關進度與班級座號鎖定">
+                    🗑️ 重置紀錄</button>
+                <button onclick="openProgressModal()"
+                    class="px-3 py-1.5 bg-sky-500 hover:bg-sky-600 text-white text-xs font-bold rounded-xl transition shadow-sm flex items-center gap-1">
+                    📋 進度代碼</button>
+                <button onclick="goHome()"
+                    class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-xl transition">
+                    🏠 首頁</button>
+            </div>
+        </div>
+
+        <!-- 第二排：學生資訊 + 音樂 + 自動擷取 -->
+        <div class="flex flex-wrap items-center justify-center gap-2 px-2 mb-3">
+            <div class="flex flex-wrap items-center gap-2 bg-white/90 backdrop-blur-sm px-3 py-2 rounded-2xl shadow-sm border border-sky-100">
+                <span class="text-[10px] text-gray-400 font-bold whitespace-nowrap">👤 班級</span>
+                <input id="input-class" type="text" maxlength="10" placeholder="班級名稱"
+                    class="student-input" oninput="saveStudentInfo()">
+                <span class="text-[11px] text-gray-300 font-bold">‧</span>
+                <span class="text-[10px] text-gray-400 font-bold whitespace-nowrap">座號</span>
+                <input id="input-seat" type="text" maxlength="5" placeholder="號"
+                    class="student-input" style="width:3.5rem" oninput="saveStudentInfo()">
+                <span class="text-[11px] text-gray-300 font-bold">‧</span>
+                <span class="text-[10px] text-gray-400 font-bold whitespace-nowrap">🔑 PIN 碼</span>
+                <input id="input-pin" type="password" maxlength="6" placeholder="6位數" inputmode="numeric"
+                    class="student-input" style="width:4.5rem" oninput="saveStudentInfo()">
+                <button onclick="syncLoadFromCloud()" id="btn-cloud-load"
+                    class="px-2.5 py-1 bg-sky-500 hover:bg-sky-600 text-white text-[10px] font-bold rounded-lg transition shadow-sm ml-1 flex items-center gap-1">
+                    <span>☁️ 讀取進度</span>
+                </button>
+            </div>
+            <div class="flex items-center gap-2 bg-white/90 backdrop-blur-sm px-3 py-2 rounded-2xl shadow-sm border border-sky-100">
+                <button onclick="toggleMusic()" id="music-btn" class="text-lg transition hover:scale-110">🎵</button>
+                <div class="flex flex-col items-start">
+                    <span class="text-[9px] text-gray-400 font-bold">音樂音量</span>
+                    <input type="range" id="volume-slider" min="0" max="1" step="0.1" value="0.4"
+                        oninput="adjustVolume(this.value)" class="w-20">
+                </div>
+            </div>
+            <button onclick="toggleAutoCapture()" id="capture-toggle-btn"
+                class="px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-600 text-xs font-bold rounded-2xl transition border border-amber-200 shadow-sm flex items-center gap-1">
+                <span id="capture-status-icon">📸</span>
+                <span id="capture-status-text">自動擷取: ON</span>
+            </button>
+        </div>
+
+        
+
+        <!-- 關卡導航 -->
+        <div id="level-nav" class="flex flex-wrap items-center justify-center gap-2 px-2">
+            <button onclick="switchLevel(0)" id="lvl-btn-0" class="lvl-btn px-3 py-1 rounded-full text-xs font-bold transition">第一關</button>
+            <button onclick="switchLevel(1)" id="lvl-btn-1" class="lvl-btn lvl-locked px-3 py-1 rounded-full text-xs font-bold transition">第二關 🔒</button>
+            <button onclick="switchLevel(2)" id="lvl-btn-2" class="lvl-btn lvl-locked px-3 py-1 rounded-full text-xs font-bold transition">第三關 🔒</button>
+            <button onclick="switchLevel(3)" id="lvl-btn-3" class="lvl-btn lvl-locked px-3 py-1 rounded-full text-xs font-bold transition">第四關 🔒</button>
+            <button onclick="switchLevel(4)" id="lvl-btn-4" class="lvl-btn lvl-locked px-3 py-1 rounded-full text-xs font-bold transition">第五關 🔒</button>
+            <button onclick="switchLevel(5)" id="lvl-btn-5" class="lvl-btn lvl-locked px-3 py-1 rounded-full text-xs font-bold transition">第六關 🔒</button>
+            <button onclick="switchLevel(6)" id="lvl-btn-6" class="lvl-btn lvl-locked px-3 py-1 rounded-full text-xs font-bold transition">第七關 🔒</button>
+        </div>
+        <p id="level-desc" class="text-sky-600 mt-3 font-bold text-sm bg-white/90 px-5 py-1.5 rounded-full border border-sky-100 shadow-sm inline-block mx-2 whitespace-nowrap w-max">準備冒險...</p>
+        <span id="timer-display" class="hidden text-orange-600 mt-3 font-bold text-sm bg-white/90 px-5 py-1.5 rounded-full border border-orange-100 shadow-sm inline-block mx-2 whitespace-nowrap w-max" style="font-family: monospace, sans-serif;">⏱️ 00:00</span>
+    </header>
+
+    <div class="flex flex-col lg:flex-row gap-8 w-full max-w-6xl">
+        <!-- 遊戲地圖 -->
+        <div class="flex-1 flex flex-col items-center lg:sticky lg:top-8 self-start">
+            <div id="game-board" class="ocean-bg w-full max-w-[500px] grid grid-cols-9 rounded-2xl shadow-2xl overflow-hidden relative border-4 border-sky-900 ring-8 ring-white/50"></div>
+        </div>
+
+        <!-- 程式控制區 -->
+        <div class="flex-1 flex flex-col gap-6">
+            <div class="bg-white/90 backdrop-blur p-4 rounded-2xl shadow-xl border border-white">
+                <h2 class="text-lg font-bold text-gray-700 mb-3 border-b pb-2 flex items-center gap-2">
+                    <span>📜 指令卡片</span>
+                </h2>
+                <div class="grid grid-cols-4 gap-2">
+                    <button id="btn-forward" onclick="addCommand('forward')"
+                        class="card-active flex flex-col items-center p-2 bg-blue-50 border-2 border-blue-200 rounded-xl text-blue-700 font-bold disabled:opacity-40">
+                        <span class="text-xl">⬆️</span>
+                        <span id="limit-forward" class="text-[9px] mt-1 bg-blue-200 px-1.5 rounded-full">∞</span>
+                    </button>
+                    <button id="btn-backward" onclick="addCommand('backward')"
+                        class="card-active flex flex-col items-center p-2 bg-blue-50 border-2 border-blue-200 rounded-xl text-blue-700 font-bold disabled:opacity-40">
+                        <span class="text-xl">⬇️</span>
+                        <span id="limit-backward" class="text-[9px] mt-1 bg-blue-200 px-1.5 rounded-full">∞</span>
+                    </button>
+                    <button id="btn-left" onclick="addCommand('left')"
+                        class="card-active flex flex-col items-center p-2 bg-indigo-50 border-2 border-indigo-200 rounded-xl text-indigo-700 font-bold disabled:opacity-40">
+                        <span class="text-xl">↪️</span>
+                        <span id="limit-left" class="text-[9px] mt-1 bg-indigo-200 px-1.5 rounded-full">∞</span>
+                    </button>
+                    <button id="btn-right" onclick="addCommand('right')"
+                        class="card-active flex flex-col items-center p-2 bg-indigo-50 border-2 border-indigo-200 rounded-xl text-indigo-700 font-bold disabled:opacity-40">
+                        <span class="text-xl">↩️</span>
+                        <span id="limit-right" class="text-[9px] mt-1 bg-indigo-200 px-1.5 rounded-full">∞</span>
+                    </button>
+                    <button id="btn-shoot" onclick="addCommand('shoot')"
+                        class="card-active hidden flex flex-col items-center p-2 bg-red-50 border-2 border-red-200 rounded-xl text-red-700 font-bold disabled:opacity-40">
+                        <span class="text-xl">🎯</span>
+                        <span id="limit-shoot" class="text-[9px] mt-1 bg-red-200 px-1.5 rounded-full">∞</span>
+                    </button>
+                </div>
+
+                <div id="repeat-section" class="hidden">
+                    <h2 class="text-lg font-bold text-gray-700 mt-4 mb-3 border-b pb-2 flex items-center gap-2">
+                        <span>🔄 重複卡片</span>
+                    </h2>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="addCommand('repeat_2')"
+                            class="card-active flex items-center justify-center gap-2 p-2 bg-orange-50 border-2 border-orange-200 rounded-xl text-orange-700 font-bold transition">
+                            <span class="text-lg">🔁</span><span class="text-xs">x2</span>
+                        </button>
+                        <button onclick="addCommand('repeat_3')"
+                            class="card-active flex items-center justify-center gap-2 p-2 bg-orange-50 border-2 border-orange-200 rounded-xl text-orange-700 font-bold transition">
+                            <span class="text-lg">🔁</span><span class="text-xs">x3</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 程式序列 -->
+            <div class="bg-white/90 backdrop-blur p-4 rounded-2xl shadow-xl flex-1 flex flex-col min-h-[380px] border border-white">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-lg font-bold text-gray-700">💾 程式序列</h2>
+                    <div class="flex gap-2">
+                        <button id="btn-pop" onclick="popCommand()" class="text-xs text-amber-600 px-3 py-1 bg-amber-50 rounded-lg border border-amber-200 transition hover:bg-amber-100 whitespace-nowrap w-max font-bold">復原</button>
+                        <button id="btn-clear" onclick="clearProgram()" class="text-xs text-red-500 px-3 py-1 bg-red-50 rounded-lg border border-red-200 transition hover:bg-red-100 whitespace-nowrap w-max font-bold">清除全部</button>
+                    </div>
+                </div>
+                <div id="program-locked-banner">
+                    <span>🏆</span>
+                    <span>過關紀錄—按「清除全部」可重新編輯指令</span>
+                </div>
+                <div id="program-list" class="flex-1 p-3 bg-gray-50/50 rounded-xl border-2 border-dashed border-gray-200 overflow-y-auto max-h-[380px]"></div>
+                <button id="run-btn" onclick="runProgram()" class="mt-4 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-2xl shadow-lg transition active:scale-95 text-lg">🚀 開始航行</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 訊息視窗 -->
+    <div id="modal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-[110] p-4">
+        <div class="bg-white p-8 rounded-3xl max-w-sm w-full text-center shadow-2xl border-t-8 border-sky-500">
+            <div id="modal-icon" class="text-7xl mb-4">🏆</div>
+            <h2 id="modal-title" class="text-2xl font-bold mb-2 text-gray-800">任務達成！</h2>
+            <p id="modal-desc" class="text-gray-600 mb-8">成功的抵達了終點。</p>
+            <button id="modal-capture-btn" onclick="manualCapture()" class="w-full bg-amber-500 text-white py-3 rounded-xl font-bold hover:bg-amber-600 transition mb-3 flex items-center justify-center gap-2"><span>📷</span> 擷取過關畫面</button>
+            <button id="modal-btn" onclick="closeModal()" class="w-full bg-sky-600 text-white py-3 rounded-xl font-bold hover:bg-sky-700 transition">確定</button>
+        </div>
+    </div>
+
+    <!-- 進度代碼視窗 -->
+    <div id="progress-modal" aria-modal="true" role="dialog" aria-labelledby="pc-title">
+        <div class="progress-modal-box">
+            <div class="flex items-center justify-between mb-4">
+                <h2 id="pc-title" class="text-xl font-bold text-gray-800 flex items-center gap-2">📋 進度代碼</h2>
+                <button onclick="closeProgressModal()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+            </div>
+
+            <!-- Tab -->
+            <div class="flex gap-2 mb-4">
+                <button id="pc-tab-export" class="pc-tab-btn active" onclick="switchPcTab('export')">📤 匯出代碼</button>
+                <button id="pc-tab-import" class="pc-tab-btn" onclick="switchPcTab('import')">📥 匯入代碼</button>
+            </div>
+
+            <!-- 匯出面板 -->
+            <div id="pc-export-panel">
+                <!-- 學生資訊預覽 -->
+                <div id="pc-student-info" class="flex items-center gap-2 mb-3 px-3 py-2 bg-sky-50 border border-sky-100 rounded-xl text-xs text-sky-700 font-bold">
+                    <span>👤</span>
+                    <span id="pc-student-display">尚未輸入班級《座號</span>
+                </div>
+                <p class="text-sm text-gray-500 mb-2">複製下方代碼，分享或儲存以紀錄目前的闖關進度與每關使用的積木。</p>
+                <textarea id="progress-code-textarea" readonly spellcheck="false"></textarea>
+                <div class="flex gap-2 mt-3">
+                    <button onclick="copyProgressCode()" class="pc-action-btn bg-sky-500 hover:bg-sky-600 text-white">📋 複製代碼</button>
+                    <button onclick="downloadProgressCode()" class="pc-action-btn bg-slate-100 hover:bg-slate-200 text-slate-600">💾 下載檔案</button>
+                </div>
+            </div>
+
+            <!-- 匯入面板 -->
+            <div id="pc-import-panel" class="hidden">
+                <p class="text-sm text-gray-500 mb-2">貼上進度代碼以還原闖關紀錄（注意：這會覆蓋目前的進度！）</p>
+                <textarea id="import-code-textarea" spellcheck="false" placeholder="在此貼上進度代碼…" class="w-full h-32 font-mono text-xs border-2 border-gray-200 rounded-xl p-3 bg-gray-50 focus:outline-none focus:border-sky-400 resize-none word-break: break-all"></textarea>
+                <button onclick="importProgressCode()" class="pc-action-btn bg-green-500 hover:bg-green-600 text-white mt-3">✅ 套用進度代碼</button>
+            </div>
+
+            <p id="pc-feedback" class="mt-3 text-gray-400"></p>
+
+            <!-- 關卡積木預覽 -->
+            <div class="mt-4 border-t pt-4">
+                <p class="text-xs font-bold text-gray-500 mb-2">📦 已儲存關卡積木紀錄</p>
+                <div id="pc-level-summary" class="space-y-1 max-h-48 overflow-y-auto"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🗑️ 重置確認 Modal -->
+    <div id="reset-modal" class="modal-overlay">
+        <div class="modal-content w-full max-w-sm">
+            <div id="reset-step-1">
+                <div class="text-center">
+                    <div class="text-5xl mb-4">⚠️</div>
+                    <h2 class="text-xl font-black text-slate-800 mb-2">確定要重置嗎？</h2>
+                    <p class="text-sm text-slate-600 mb-6 text-left">
+                        這將會清除您目前所有的闖關進度、積木紀錄以及鎖定的班級座號資訊！<br><br>
+                        <span class="text-amber-600 font-bold">💡 提示：如果您輸入了錯誤的代碼導致被鎖定，才建議使用此功能。</span>
+                    </p>
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="closeResetModal()" class="flex-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl transition">取消</button>
+                    <button onclick="showResetStep2()" class="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl transition shadow-md shadow-red-200">下一步</button>
+                </div>
+            </div>
+
+            <div id="reset-step-2" class="hidden">
+                <div class="text-center">
+                    <div class="text-5xl mb-4 animate-pulse">🚨</div>
+                    <h2 class="text-xl font-black text-red-600 mb-2">這是最後的確認！</h2>
+                    <div class="p-3 bg-red-50 border border-red-100 rounded-xl mb-6 text-left">
+                        <p class="text-sm text-red-800 font-bold">所有的資料都將被清除且無法復原。</p>
+                        <p class="text-xs text-red-600 mt-1">點擊「確定清除」將立刻清除所有資料並重新載入頁面。</p>
+                    </div>
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="closeResetModal()" class="flex-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl transition">取消</button>
+                    <button onclick="executeResetData()" class="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition shadow-lg shadow-red-200 flex items-center justify-center gap-1">
+                        <span>🗑️</span> 確定清除
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 核心定義 ---
+        const GRID_SIZE = 9;
+        let startPos = { x: 4, y: 8 };
+        let endPos = { x: 4, y: 0 };
+
+        let customLevels = [
+            { name: "第一關：自由航行", desc: "熟悉指令，探索海域。", limits: null, showRepeat: false, obstacles: [], portals: [], startPos: { x: 4, y: 8 }, endPos: { x: 4, y: 0 } },
+            { name: "第二關：邏輯跳躍", desc: "僅一張前進卡？運用重複的魔力！", limits: { forward: 1, backward: 0, left: 0, right: 0 }, showRepeat: true, obstacles: [], portals: [], startPos: { x: 4, y: 8 }, endPos: { x: 4, y: 0 } },
+            { name: "第三關：精準控制", desc: "資源限制！請謹慎規劃。", limits: { forward: 6, backward: 2, left: 2, right: 2 }, showRepeat: false, obstacles: [], portals: [], startPos: { x: 4, y: 8 }, endPos: { x: 4, y: 0 } },
+            { name: "第四關：避開礁石", desc: "前方有巨石阻擋，請繞道而行。", limits: { forward: 5, left: 2, right: 2, backward: 1 }, showRepeat: true, obstacles: [{ x: 4, y: 4 }], portals: [], startPos: { x: 4, y: 8 }, endPos: { x: 4, y: 0 } },
+            { name: "第五關：傳送秘境", desc: "跨越礁石牆，尋找神祕傳送門。", limits: { forward: 2, left: 1, right: 1 }, showRepeat: true, obstacles: [{ x: 0, y: 4 }, { x: 1, y: 4 }, { x: 2, y: 4 }, { x: 3, y: 4 }, { x: 4, y: 4 }, { x: 5, y: 4 }, { x: 6, y: 4 }, { x: 7, y: 4 }, { x: 8, y: 4 }], portals: [{ x: 0, y: 8, targetX: 8, targetY: 0 }, { x: 8, y: 0, targetX: 0, targetY: 8 }], startPos: { x: 4, y: 8 }, endPos: { x: 4, y: 0 } },
+            { name: "第六關：綜合闖關", desc: "靈活運用傳送與重複指令。", limits: { forward: 2, backward: 2, left: 2, right: 2 }, showRepeat: true, obstacles: [{ x: 3, y: 7 }, { x: 1, y: 6 }, { x: 3, y: 5 }, { x: 1, y: 4 }, { x: 3, y: 3 }, { x: 1, y: 2 }, { x: 1, y: 0 }, { x: 7, y: 0 }, { x: 7, y: 2 }, { x: 7, y: 4 }, { x: 7, y: 6 }, { x: 5, y: 7 }, { x: 5, y: 5 }, { x: 5, y: 3 }, { x: 4, y: 1 }], portals: [], startPos: { x: 4, y: 8 }, endPos: { x: 4, y: 0 } },
+            { name: "第七關：時空金鑰", desc: "運用傳送門穿梭海域取得金鑰，並解鎖神秘寶藏。", limits: null, showRepeat: true, obstacles: [{ x: 0, y: 3 }, { x: 1, y: 3 }, { x: 2, y: 3 }, { x: 6, y: 5 }, { x: 7, y: 5 }, { x: 8, y: 5 }, { x: 4, y: 4 }, { x: 3, y: 4 }, { x: 5, y: 4 }], portals: [{ x: 0, y: 0, targetX: 8, targetY: 8 }, { x: 8, y: 8, targetX: 0, targetY: 0 }], keyPos: { x: 0, y: 5 }, startPos: { x: 4, y: 8 }, endPos: { x: 8, y: 4 } }
+        ];
+
+        let currentLevelIndex = 0;
+        let unlockedLevel = parseInt(localStorage.getItem('pirate_unlocked_level') || '0');
+        let shipIcon = localStorage.getItem('pirate_ship_icon') || '🚢';
+        let shipState = { x: 4, y: 8, dir: 0 };
+        let program = [];
+        let isProgramLocked = false;   // 已過關則顯示紀錄且鎖定編輯
+        let isRunning = false;
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let isMusicOn = false;
+        let hasKey = false;
+        let hasWonCurrentRun = false;
+        let isGameCleared = localStorage.getItem('pirate_game_cleared') === 'true';
+        let levelStartTime = 0;
+        let gameTimerInterval = null;
+        let isAutoCapture = localStorage.getItem('pirate_auto_capture') !== 'false';
+
+        // ---- 進度代碼：載入已儲存的關卡積木紀錄 ----
+        // levelPrograms[i] = 第 i 關過關時使用的積木陣列
+        let levelPrograms = JSON.parse(localStorage.getItem('pirate_level_programs') || 'null') || Array(7).fill(null);
+
+        // ---- 學生資訊 ----
+        let studentClass = localStorage.getItem('pirate_student_class') || '';
+        let studentSeat  = localStorage.getItem('pirate_student_seat')  || '';
+        let studentPin   = localStorage.getItem('pirate_student_pin')   || '';
+        let isStudentLocked = localStorage.getItem('pirate_student_locked') === 'true';
+
+        const playlist = ['bgm1.mp3', 'bgm2.mp3', 'bgm3.mp3', 'bgm4.mp3', 'bgm5.mp3'];
+        const bgm = new Audio();
+        bgm.volume = 0.4;
+        let failedTracks = new Set();
+        bgm.onerror = () => {
+            const currentTrack = bgm.src.split('/').pop();
+            failedTracks.add(currentTrack);
+            if (failedTracks.size < playlist.length && isMusicOn) setTimeout(playRandomTrack, 500);
+        };
+        bgm.addEventListener('ended', () => { if (isMusicOn) playRandomTrack(); });
+
+        let activeDriftwoods = [];
+
+        function playSfx(freq, type = 'sine', duration = 0.1, volume = 0.05) {
+            try {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                gain.gain.setValueAtTime(volume, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch (e) { }
+        }
+
+        function playAudio(filename) {
+            return new Promise((resolve) => {
+                const audio = new Audio(`music/${filename}`);
+                audio.onended = resolve;
+                audio.onerror = resolve;
+                audio.play().catch(resolve);
+            });
+        }
+
+        function playRandomTrack() {
+            if (playlist.length === 0) return;
+            const availableTracks = playlist.filter(t => !failedTracks.has(t));
+            if (availableTracks.length === 0) { failedTracks.clear(); return; }
+            const nextTrack = availableTracks[Math.floor(Math.random() * availableTracks.length)];
+            bgm.src = `music/${nextTrack}`;
+            bgm.load();
+            bgm.play().catch(() => {});
+        }
+
+        function toggleMusic() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            isMusicOn = !isMusicOn;
+            document.getElementById('music-btn').innerText = isMusicOn ? '🔊' : '🎵';
+            if (isMusicOn) {
+                if (!bgm.src || bgm.paused) playRandomTrack();
+                else bgm.play().catch(() => playRandomTrack());
+            } else bgm.pause();
+        }
+
+        function adjustVolume(val) { bgm.volume = val; }
+
+        function toggleAutoCapture() {
+            isAutoCapture = !isAutoCapture;
+            localStorage.setItem('pirate_auto_capture', isAutoCapture);
+            updateCaptureUI();
+            playSfx(isAutoCapture ? 800 : 400);
+        }
+
+        function updateCaptureUI() {
+            const btn = document.getElementById('capture-toggle-btn');
+            const icon = document.getElementById('capture-status-icon');
+            const text = document.getElementById('capture-status-text');
+            
+            if (isAutoCapture) {
+                btn.className = "px-3 py-1 bg-amber-50 hover:bg-amber-100 text-amber-600 text-xs font-bold rounded-lg transition border border-amber-200 flex items-center gap-1";
+                text.innerText = "自動擷取: ON";
+                icon.innerText = "📸";
+            } else {
+                btn.className = "px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-400 text-xs font-bold rounded-lg transition border border-gray-200 flex items-center gap-1";
+                text.innerText = "自動擷取: OFF";
+                icon.innerText = "🚫";
+            }
+        }
+
+        function goHome() {
+            if (isRunning) return;
+            location.href = 'index.html';
+        }
+
+        function initBoard() {
+            const board = document.getElementById('game-board');
+            const lvl = customLevels[currentLevelIndex];
+            startPos = lvl.startPos || { x: 4, y: 8 };
+            endPos = lvl.endPos || { x: 4, y: 0 };
+            board.innerHTML = '';
+            activeDriftwoods = JSON.parse(JSON.stringify(lvl.driftwoods || []));
+            for (let y = 0; y < GRID_SIZE; y++) {
+                for (let x = 0; x < GRID_SIZE; x++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'grid-cell';
+                    if (x === startPos.x && y === startPos.y) cell.classList.add('bg-green-500/20');
+                    const objLayer = document.createElement('div');
+                    objLayer.className = 'cell-object';
+                    objLayer.id = `obj-${x}-${y}`;
+                    if (x === endPos.x && y === endPos.y) {
+                        objLayer.innerHTML = '<span class="text-2xl drop-shadow-md">💰</span>';
+                        cell.classList.add('bg-yellow-400/10');
+                    } else if (lvl.keyPos && x === lvl.keyPos.x && y === lvl.keyPos.y) {
+                        objLayer.innerHTML = `<span id="key-obj" class="text-2xl ${hasKey ? 'opacity-30' : ''}">🔑</span>`;
+                        cell.classList.add('bg-amber-400/10');
+                    } else if (lvl.obstacles.some(o => o.x === x && o.y === y)) {
+                        objLayer.innerHTML = '<span class="text-xl">🪨</span>';
+                    } else if (activeDriftwoods.some(d => d.x === x && d.y === y)) {
+                        const delay = ((x + y) * 0.4 % 3).toFixed(1);
+                        objLayer.innerHTML = `<span class="text-2xl floating" style="animation-delay: -${delay}s">🪵</span>`;
+                    } else if (lvl.portals) {
+                        const p = lvl.portals.find(p => p.x === x && p.y === y);
+                        if (p) objLayer.innerHTML = `<span class="text-2xl">🟣</span>`;
+                    }
+                    cell.appendChild(objLayer);
+                    board.appendChild(cell);
+                }
+            }
+            updateShipPosition();
+        }
+
+        function switchLevel(index) {
+            if (isRunning) return;
+            if (index > unlockedLevel) {
+                playSfx(150, 'sawtooth', 0.3, 0.1);
+                showModal('🔒 關卡鎖定', '請先完成前面的關卡！', '🚫', '知道了', false);
+                return;
+            }
+            currentLevelIndex = index;
+            const lvl = customLevels[index];
+            hasWonCurrentRun = false;
+            hasKey = false;
+            startPos = lvl.startPos || { x: 4, y: 8 };
+            shipState = { x: startPos.x, y: startPos.y, dir: 0 };
+            document.querySelectorAll('.lvl-btn').forEach((btn, idx) => {
+                const isLocked = idx > unlockedLevel;
+                btn.innerHTML = `第${['一', '二', '三', '四', '五', '六', '七'][idx]}關${isLocked ? ' 🔒' : ''}`;
+                // 必須在同一行設定 className，避免覆蓋 lvl-locked
+                if (isLocked) {
+                    btn.className = `lvl-btn lvl-locked px-3 py-1 rounded-full text-xs font-bold transition bg-gray-100 text-gray-400`;
+                } else if (idx === index) {
+                    btn.className = `lvl-btn px-3 py-1 rounded-full text-xs font-bold transition bg-sky-600 text-white shadow-lg scale-105`;
+                } else {
+                    btn.className = `lvl-btn px-3 py-1 rounded-full text-xs font-bold transition bg-gray-100 text-gray-500`;
+                }
+            });
+            startTimer();
+            document.getElementById('level-desc').innerText = `${lvl.name}：${lvl.desc}`;
+            document.getElementById('repeat-section').style.display = lvl.showRepeat ? 'block' : 'none';
+
+            // 若此關有過關紀錄，載入積木且鎖定編輯
+            const savedProg = levelPrograms[index];
+            if (savedProg && savedProg.length > 0) {
+                program = JSON.parse(JSON.stringify(savedProg));
+                isProgramLocked = true;
+            } else {
+                program = [];
+                isProgramLocked = false;
+            }
+            applyProgramLockUI();
+            renderProgram();
+            updateCardLimits();
+
+            initBoard();
+            playSfx(523);
+        }
+
+        function updateCardLimits() {
+            const lvl = customLevels[currentLevelIndex];
+            const types = ['forward', 'backward', 'left', 'right'];
+            types.forEach(type => {
+                const btn = document.getElementById(`btn-${type}`);
+                const limitDisp = document.getElementById(`limit-${type}`);
+                if (lvl.limits && lvl.limits[type] !== undefined) {
+                    const remaining = lvl.limits[type] - program.filter(p => p.type === type).length;
+                    limitDisp.innerText = `${remaining} 張`;
+                    btn.disabled = remaining <= 0;
+                } else { limitDisp.innerText = "∞"; btn.disabled = false; }
+            });
+        }
+
+        function updateShipPosition() {
+            const old = document.querySelector('.ship-wrapper');
+            if (old) old.remove();
+            const cell = document.getElementById('game-board').children[shipState.y * GRID_SIZE + shipState.x];
+            if (!cell) return;
+            const wrapper = document.createElement('div');
+            wrapper.className = `ship-wrapper`;
+            const arrowContainer = document.createElement('div');
+            arrowContainer.className = `direction-arrow-container arrow-pos-${shipState.dir}`;
+            const arrowBody = document.createElement('div');
+            arrowBody.className = `direction-arrow`;
+            arrowContainer.appendChild(arrowBody);
+            const ship = document.createElement('div');
+            ship.id = 'ship-entity';
+            ship.className = 'text-4xl drop-shadow-lg relative z-50';
+            ship.innerHTML = shipIcon;
+            wrapper.appendChild(arrowContainer);
+            wrapper.appendChild(ship);
+            const ripple = document.createElement('div');
+            ripple.className = 'water-ripple';
+            wrapper.appendChild(ripple);
+            cell.appendChild(wrapper);
+            setTimeout(() => ripple.remove(), 2000);
+        }
+
+        const REPEAT_MAP = { 'repeat_2': 2, 'repeat_3': 3 };
+
+        function addCommand(type) {
+            if (isRunning || isProgramLocked) return;
+            const cmd = { type, wrap: 1 };
+            program.push(cmd);
+            renderProgram();
+            updateCardLimits();
+            playSfx(600, 'sine', 0.05);
+        }
+
+        function changeWrap(idx, delta) {
+            if (isRunning || isProgramLocked) return;
+            const cmd = program[idx];
+            if (!cmd || !REPEAT_MAP[cmd.type]) return;
+            cmd.wrap = Math.max(1, Math.min(6, (cmd.wrap || 1) + delta));
+            renderProgram();
+            playSfx(800, 'sine', 0.03);
+        }
+
+        function clearProgram() {
+            if (isRunning) return;
+            program = [];
+            isProgramLocked = false;
+            applyProgramLockUI();
+            renderProgram();
+            updateCardLimits();
+        }
+        function popCommand() {
+            if (isRunning || isProgramLocked || program.length === 0) return;
+            program.pop();
+            renderProgram();
+            updateCardLimits();
+        }
+
+        /** 根據 isProgramLocked 更新 UI 狀態 */
+        function applyProgramLockUI() {
+            const banner = document.getElementById('program-locked-banner');
+            const list   = document.getElementById('program-list');
+            const popBtn = document.getElementById('btn-pop');
+            if (isProgramLocked) {
+                banner.classList.add('show');
+                list.classList.add('locked');
+                popBtn.disabled = true;
+                popBtn.classList.add('opacity-30');
+                // 鎖定指令卡片按鈕
+                document.querySelectorAll('#btn-forward,#btn-backward,#btn-left,#btn-right,#btn-shoot').forEach(b => {
+                    b.disabled = true;
+                });
+                document.querySelectorAll('#repeat-section button').forEach(b => {
+                    b.disabled = true;
+                });
+            } else {
+                banner.classList.remove('show');
+                list.classList.remove('locked');
+                popBtn.disabled = false;
+                popBtn.classList.remove('opacity-30');
+                // 指令卡片按鈕由 updateCardLimits 控制，此處只先解除 repeat 的禁用
+                document.querySelectorAll('#repeat-section button').forEach(b => {
+                    b.disabled = false;
+                });
+            }
+        }
+
+        function findBlockEnd(track, startIdx, wrapCount) {
+            let i = startIdx + 1;
+            let items = 0;
+            while (items < wrapCount && i < track.length) {
+                const card = track[i];
+                if (REPEAT_MAP[card.type]) {
+                    i = findBlockEnd(track, i, card.wrap || 1);
+                } else {
+                    i++;
+                }
+                items++;
+            }
+            return i;
+        }
+
+        function expandProgram(track) {
+            const result = [];
+            function expand(startIdx, length, activeRepeats) {
+                const end = startIdx + length;
+                let i = startIdx;
+                while (i < end && i < track.length) {
+                    const card = track[i];
+                    const rep = REPEAT_MAP[card.type];
+                    if (rep) {
+                        const wrapCount = card.wrap || 1;
+                        const bodyEnd = findBlockEnd(track, i, wrapCount);
+                        const bodyLen = bodyEnd - (i + 1);
+                        for (let k = 0; k < rep; k++) {
+                            result.push({
+                                type: 'repeat_start',
+                                originalIdx: i,
+                                currentIteration: k + 1,
+                                totalIterations: rep,
+                                activeRepeats: [...activeRepeats]
+                            });
+
+                            expand(i + 1, bodyLen, [
+                                ...activeRepeats,
+                                { originalIdx: i, currentIteration: k + 1, totalIterations: rep }
+                            ]);
+
+                            result.push({
+                                type: 'repeat_end',
+                                originalIdx: i,
+                                currentIteration: k + 1,
+                                totalIterations: rep,
+                                activeRepeats: [...activeRepeats]
+                            });
+                        }
+                        i = bodyEnd;
+                    } else {
+                        result.push({
+                            type: 'command',
+                            commandType: card.type,
+                            originalIdx: i,
+                            activeRepeats: [...activeRepeats]
+                        });
+                        i++;
+                    }
+                }
+            }
+            expand(0, track.length, []);
+            return result;
+        }
+
+        function renderProgram() {
+            const list = document.getElementById('program-list');
+            list.innerHTML = '';
+            
+            function renderRecursive(track, startIdx, wrapCount, depth, container) {
+                let i = startIdx;
+                let items = 0;
+                while (items < wrapCount && i < track.length) {
+                    const cmd = track[i];
+                    const isRepeat = REPEAT_MAP[cmd.type];
+                    
+                    if (isRepeat) {
+                        const block = document.createElement('div');
+                        block.className = 'repeat-block';
+                        block.id = `repeat-block-${i}`;
+                        const header = document.createElement('div');
+                        header.className = 'repeat-header';
+                        header.id = `repeat-header-${i}`;
+                        header.innerHTML = `
+                            <div class="flex items-center gap-2">
+                                <span class="step-number">${i + 1}</span>
+                                <span>🔁 重複 x${REPEAT_MAP[cmd.type]}</span>
+                                <span id="repeat-iteration-${i}" class="repeat-iteration-badge hidden ml-2 bg-white/20 text-white text-[10px] px-1.5 py-0.5 rounded-full font-normal"></span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-[10px] opacity-80">包裹:</span>
+                                <button onclick="changeWrap(${i}, -1)" class="w-5 h-5 bg-white/20 rounded flex items-center justify-center hover:bg-white/40">-</button>
+                                <span class="text-sm w-4 text-center">${cmd.wrap}</span>
+                                <button onclick="changeWrap(${i}, 1)" class="w-5 h-5 bg-white/20 rounded flex items-center justify-center hover:bg-white/40">+</button>
+                                <button onclick="removeCommand(${i})" class="ml-2 text-white/50 hover:text-white">✕</button>
+                            </div>
+                        `;
+                        block.appendChild(header);
+                        const body = document.createElement('div');
+                        body.className = 'repeat-body';
+                        block.appendChild(body);
+                        container.appendChild(block);
+                        i = renderRecursive(track, i + 1, cmd.wrap, depth + 1, body);
+                    } else {
+                        const item = document.createElement('div');
+                        const cmdIcons = { 'forward': '⬆️', 'backward': '⬇️', 'left': '↪️', 'right': '↩️', 'shoot': '🎯' };
+                        const cmdNames = { 'forward': '前進', 'backward': '後退', 'left': '左轉', 'right': '右轉', 'shoot': '射擊' };
+                        const cmdColors = { 'forward': 'bg-blue-600', 'backward': 'bg-blue-600', 'left': 'bg-indigo-600', 'right': 'bg-indigo-600', 'shoot': 'bg-red-600' };
+                        
+                        item.className = `command-card ${cmdColors[cmd.type]}`;
+                        item.id = `program-item-${i}`;
+                        item.innerHTML = `
+                            <div class="flex items-center gap-2 overflow-hidden">
+                                <div class="step-number">${i + 1}</div>
+                                <span class="text-xl flex-shrink-0">${cmdIcons[cmd.type]}</span>
+                                <span class="whitespace-nowrap text-sm">${cmdNames[cmd.type]}</span>
+                            </div>
+                            <button onclick="removeCommand(${i})" class="text-white/40 hover:text-white ml-2 text-xs flex-shrink-0">✕</button>
+                        `;
+                        container.appendChild(item);
+                        i++;
+                    }
+                    items++;
+                }
+                return i;
+            }
+
+            renderRecursive(program, 0, Infinity, 0, list);
+            list.scrollTop = list.scrollHeight;
+        }
+
+        function removeCommand(index) {
+            if (isRunning || isProgramLocked) return;
+            program.splice(index, 1);
+            renderProgram();
+            updateCardLimits();
+        }
+
+        async function runProgram() {
+            if (isRunning || program.length === 0) return;
+            isRunning = true;
+            document.getElementById('run-btn').disabled = true;
+            hasKey = false;
+            const lvl = customLevels[currentLevelIndex];
+            shipState = { x: startPos.x, y: startPos.y, dir: 0 };
+            updateShipPosition();
+            await sleep(800);
+
+            const expanded = expandProgram(program);
+            let winStatus = false;
+            let reachedTreasureMidway = false;
+            let firstReachInfo = null;
+            let commandStepIndex = 0;
+
+            for (let i = 0; i < expanded.length; i++) {
+                const step = expanded[i];
+                const originalIdx = step.originalIdx;
+                
+                // 清除所有高亮與 iteration badge
+                document.querySelectorAll('.command-card, .repeat-header, .repeat-block').forEach(el => {
+                    el.classList.remove('executing');
+                });
+                document.querySelectorAll('.repeat-iteration-badge').forEach(badge => {
+                    badge.classList.add('hidden');
+                    badge.innerText = '';
+                });
+
+                if (step.type === 'repeat_start') {
+                    // 高亮目前的重複指令與其所有上層重複指令
+                    const header = document.getElementById(`repeat-header-${originalIdx}`);
+                    const block = document.getElementById(`repeat-block-${originalIdx}`);
+                    const badge = document.getElementById(`repeat-iteration-${originalIdx}`);
+                    
+                    if (header) header.classList.add('executing');
+                    if (block) block.classList.add('executing');
+                    if (badge) {
+                        badge.innerText = `第 ${step.currentIteration}/${step.totalIterations} 次`;
+                        badge.classList.remove('hidden');
+                    }
+
+                    if (step.activeRepeats) {
+                        step.activeRepeats.forEach(rep => {
+                            const pHeader = document.getElementById(`repeat-header-${rep.originalIdx}`);
+                            const pBlock = document.getElementById(`repeat-block-${rep.originalIdx}`);
+                            const pBadge = document.getElementById(`repeat-iteration-${rep.originalIdx}`);
+                            
+                            if (pHeader) pHeader.classList.add('executing');
+                            if (pBlock) pBlock.classList.add('executing');
+                            if (pBadge) {
+                                pBadge.innerText = `第 ${rep.currentIteration}/${rep.totalIterations} 次`;
+                                pBadge.classList.remove('hidden');
+                            }
+                        });
+                    }
+
+                    await sleep(800);
+                } 
+                else if (step.type === 'repeat_end') {
+                    if (step.activeRepeats) {
+                        step.activeRepeats.forEach(rep => {
+                            const pHeader = document.getElementById(`repeat-header-${rep.originalIdx}`);
+                            const pBlock = document.getElementById(`repeat-block-${rep.originalIdx}`);
+                            const pBadge = document.getElementById(`repeat-iteration-${rep.originalIdx}`);
+                            
+                            if (pHeader) pHeader.classList.add('executing');
+                            if (pBlock) pBlock.classList.add('executing');
+                            if (pBadge) {
+                                pBadge.innerText = `第 ${rep.currentIteration}/${rep.totalIterations} 次`;
+                                pBadge.classList.remove('hidden');
+                            }
+                        });
+                    }
+
+                    await sleep(400);
+                }
+                else if (step.type === 'command') {
+                    commandStepIndex++;
+
+                    // 高亮目前執行的原始指令卡片
+                    const element = document.getElementById(`program-item-${originalIdx}`);
+                    if (element) { 
+                        element.classList.add('executing'); 
+                        const container = document.getElementById('program-list');
+                        if (container) {
+                            const containerRect = container.getBoundingClientRect();
+                            const elemRect = element.getBoundingClientRect();
+                            const relativeTop = elemRect.top - containerRect.top;
+                            const targetScroll = container.scrollTop + relativeTop - (containerRect.height / 2) + (elemRect.height / 2);
+                            container.scrollTo({ top: targetScroll, behavior: 'smooth' });
+                        }
+                    }
+
+                    // 高亮所有包覆此指令的重複迴圈並顯示目前次數
+                    if (step.activeRepeats) {
+                        step.activeRepeats.forEach(rep => {
+                            const header = document.getElementById(`repeat-header-${rep.originalIdx}`);
+                            const block = document.getElementById(`repeat-block-${rep.originalIdx}`);
+                            const badge = document.getElementById(`repeat-iteration-${rep.originalIdx}`);
+                            
+                            if (header) header.classList.add('executing');
+                            if (block) block.classList.add('executing');
+                            if (badge) {
+                                badge.innerText = `第 ${rep.currentIteration}/${rep.totalIterations} 次`;
+                                badge.classList.remove('hidden');
+                            }
+                        });
+                    }
+
+                    if (step.commandType === 'shoot') { await performShoot(); } 
+                    else {
+                        if (step.commandType === 'left') await playAudio('turn-left.mp3');
+                        else if (step.commandType === 'right') await playAudio('turn-right.mp3');
+                        
+                        const res = moveShip(step.commandType);
+                        updateShipPosition();
+                        
+                        if (step.commandType === 'forward' || step.commandType === 'backward') playSfx(res === 'ok' ? 300 : 400);
+                        
+                        if (lvl.keyPos && shipState.x === lvl.keyPos.x && shipState.y === lvl.keyPos.y && !hasKey) {
+                            hasKey = true; 
+                            playSfx(800, 'sine', 0.2, 0.1);
+                            const keyEl = document.getElementById('key-obj');
+                            if (keyEl) keyEl.style.opacity = '0.3';
+                        }
+
+                        if (shipState.x === endPos.x && shipState.y === endPos.y && !reachedTreasureMidway) {
+                            reachedTreasureMidway = true;
+                            firstReachInfo = { stepIndex: commandStepIndex };
+                        }
+
+                        await sleep(600);
+
+                        if (res === 'hit' || res === 'out') {
+                            playSfx(100, 'sawtooth', 0.5, 0.1);
+                            let failTitle = '💥 航行失敗', failMsg = res === 'hit' ? '撞上礁石沉船了！' : '船隻駛出了邊界！';
+                            if (reachedTreasureMidway) {
+                                failTitle = '⚓ 指令過多';
+                                failMsg = `你在執行到展開後第 ${firstReachInfo.stepIndex} 步時就抵達過終點了，指令設定太多囉！\n後續動作讓船隻` + (res === 'hit' ? '撞上了礁石！' : '駛出了邊界！');
+                            }
+                            showModal(failTitle, failMsg, '❌', '重新規劃', false);
+                            winStatus = 'fail'; break;
+                        }
+
+                        if (lvl.portals) {
+                            const p = lvl.portals.find(p => p.x === shipState.x && p.y === shipState.y);
+                            if (p) {
+                                const shipEntity = document.getElementById('ship-entity');
+                                if (shipEntity) shipEntity.classList.add('teleport-in');
+                                await playAudio('transin.mp3');
+                                shipState.x = p.targetX; shipState.y = p.targetY;
+                                updateShipPosition();
+                                const newShipEntity = document.getElementById('ship-entity');
+                                if (newShipEntity) newShipEntity.classList.add('teleport-out');
+                                await playAudio('transout.mp3');
+                                await sleep(200);
+                            }
+                        }
+                    }
+                    if (winStatus) break;
+                }
+            }
+            if (winStatus !== 'fail') {
+                if (shipState.x === endPos.x && shipState.y === endPos.y) {
+                    if (lvl.keyPos && !hasKey) winStatus = 'no-key';
+                    else winStatus = true;
+                }
+            }
+            if (winStatus === true) {
+                hasWonCurrentRun = true;
+                playSfx(880, 'sine', 0.2, 0.05);
+                setTimeout(() => playSfx(1046, 'sine', 0.3, 0.05), 100);
+                if (currentLevelIndex === unlockedLevel && unlockedLevel < customLevels.length - 1) {
+                    unlockedLevel++;
+                    localStorage.setItem('pirate_unlocked_level', unlockedLevel);
+                }
+                // ---- 儲存過關積木紀錄 ----
+                levelPrograms[currentLevelIndex] = JSON.parse(JSON.stringify(program));
+                localStorage.setItem('pirate_level_programs', JSON.stringify(levelPrograms));
+                syncSaveToCloud(); // 雲端同步
+
+                stopTimer();
+                const finalTime = document.getElementById('timer-display').innerText;
+                if (isAutoCapture) await captureScreen();
+                if (currentLevelIndex === customLevels.length - 1) {
+                    isGameCleared = true; localStorage.setItem('pirate_game_cleared', 'true');
+                    document.getElementById('master-badge').classList.remove('hidden');
+                    launchCelebration();
+                    showModal('🌟 傳奇航海家！', `恭喜你完成了所有挑戰！\n完成時間：${finalTime}`, '👑', '重新挑戰', true);
+                } else showModal('🏆 任務達成！', `你成功的抵達了終點！\n完成時間：${finalTime}`, '💰', '進入下一關', true);
+            } else if (winStatus === 'no-key') {
+                playSfx(200, 'sine', 0.3, 0.05);
+                showModal('🔒 寶藏鎖住了', '你抵達了終點，但還沒拿到鑰匙！', '🔑', '尋找鑰匙', false);
+            } else if (winStatus === false) {
+                playSfx(200, 'sine', 0.3, 0.05);
+                let failMsg = reachedTreasureMidway ? (firstReachInfo.isDuringRepeat ? `你在第 ${firstReachInfo.cmdIndex} 個指令執行到第 ${firstReachInfo.reachedAtRepeat} 次時就抵達過終點了，重複次數設定太多囉！` : `你已經在第 ${firstReachInfo.cmdIndex} 個指令結束時抵達終點了，後續的指令是多餘的。`) : '指令執行完畢，但沒抵達終點。';
+                showModal('⚓ 航行中止', failMsg, '🗺️', '調整指令', false);
+            }
+            isRunning = false;
+            document.getElementById('run-btn').disabled = false;
+        }
+
+        function moveShip(type) {
+            let { x, y, dir } = shipState;
+            const lvl = customLevels[currentLevelIndex];
+            if (type === 'left') { dir = (dir + 3) % 4; shipState.dir = dir; return 'rotate'; }
+            if (type === 'right') { dir = (dir + 1) % 4; shipState.dir = dir; return 'rotate'; }
+            if (type === 'forward') { if (dir === 0) y--; else if (dir === 1) x++; else if (dir === 2) y++; else if (dir === 3) x--; }
+            else if (type === 'backward') { if (dir === 0) y++; else if (dir === 1) x--; else if (dir === 2) y--; else if (dir === 3) x++; }
+            if (x < 0 || x >= GRID_SIZE || y < 0 || y >= GRID_SIZE) return 'out';
+            if (lvl.obstacles.some(o => o.x === x && o.y === y)) return 'hit';
+            shipState = { x, y, dir };
+            return 'ok';
+        }
+
+        function launchCelebration() {
+            const emojis = ['✨', '💫', '⭐', '🎈', '🎉', '💰'];
+            for (let i = 0; i < 30; i++) {
+                const c = document.createElement('div');
+                c.innerText = emojis[Math.floor(Math.random() * emojis.length)];
+                c.style.position = 'fixed'; c.style.left = Math.random() * 100 + 'vw'; c.style.top = '105vh';
+                c.style.fontSize = (Math.random() * 20 + 20) + 'px'; c.style.zIndex = '200';
+                c.style.transition = `all ${Math.random() * 2 + 2}s linear`;
+                document.body.appendChild(c);
+                setTimeout(() => { c.style.transform = `translateY(-120vh) rotate(${Math.random() * 360}deg)`; c.style.opacity = '0'; }, 50);
+                setTimeout(() => c.remove(), 4000);
+            }
+        }
+
+        function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+        function showModal(title, desc, icon, btn, showCapture = false) {
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-desc').innerText = desc;
+            document.getElementById('modal-icon').innerText = icon;
+            document.getElementById('modal-btn').innerText = btn;
+            document.getElementById('modal-capture-btn').classList.toggle('hidden', !showCapture);
+            document.getElementById('modal').classList.remove('hidden');
+        }
+
+        async function captureScreen() {
+            await sleep(500);
+            try {
+                const dataUrl = await domtoimage.toPng(document.body, { bgcolor: '#f0f9ff' });
+                const link = document.createElement('a');
+                link.download = `尋寶紀錄_第${currentLevelIndex + 1}關.png`;
+                link.href = dataUrl; link.click();
+            } catch (err) { console.error(err); }
+        }
+
+        async function manualCapture() {
+            const m = document.getElementById('modal'); m.classList.add('hidden');
+            await sleep(100); await captureScreen(); m.classList.remove('hidden');
+        }
+
+        function startTimer() {
+            levelStartTime = Date.now(); document.getElementById('timer-display').classList.remove('hidden');
+            if (gameTimerInterval) clearInterval(gameTimerInterval);
+            gameTimerInterval = setInterval(() => {
+                const e = Math.floor((Date.now() - levelStartTime) / 1000);
+                const m = Math.floor(e / 60).toString().padStart(2, '0'), s = (e % 60).toString().padStart(2, '0');
+                document.getElementById('timer-display').innerText = `⏱️ ${m}:${s}`;
+            }, 1000);
+        }
+
+        function stopTimer() { if (gameTimerInterval) clearInterval(gameTimerInterval); }
+
+        function closeModal() {
+            document.getElementById('modal').classList.add('hidden');
+            if (hasWonCurrentRun && currentLevelIndex < customLevels.length - 1) switchLevel(currentLevelIndex + 1);
+            else { shipState = { x: startPos.x, y: startPos.y, dir: 0 }; updateShipPosition(); }
+            hasWonCurrentRun = false;
+            
+            // 清除執行高亮
+            document.querySelectorAll('.command-card, .repeat-header, .repeat-block').forEach(el => el.classList.remove('executing'));
+            document.querySelectorAll('.repeat-iteration-badge').forEach(badge => {
+                badge.classList.add('hidden');
+                badge.innerText = '';
+            });
+        }
+
+        async function performShoot() {
+            const { x, y, dir } = shipState;
+            const tx = x + [0, 1, 0, -1][dir], ty = y + [-1, 0, 1, 0][dir];
+            await playAudio('laser.mp3');
+            const bullet = document.createElement('div'); bullet.innerHTML = '☄️';
+            bullet.className = 'absolute z-[60] transition-all duration-300 text-xl';
+            const cell = document.getElementById(`cell-${x}-${y}`); if (cell) cell.appendChild(bullet);
+            await sleep(50);
+            const tCell = document.getElementById(`cell-${tx}-${ty}`);
+            if (tCell) {
+                const r = tCell.getBoundingClientRect(), sr = cell.getBoundingClientRect();
+                bullet.style.transform = `translate(${r.left - sr.left}px, ${r.top - sr.top}px)`;
+            } else bullet.style.opacity = '0';
+            await sleep(300); bullet.remove();
+            const dIdx = activeDriftwoods.findIndex(d => d.x === tx && d.y === ty);
+            if (dIdx !== -1) {
+                activeDriftwoods.splice(dIdx, 1);
+                const obj = document.getElementById(`obj-${tx}-${ty}`);
+                const exp = document.createElement('div'); exp.className = 'text-3xl absolute animate-ping'; exp.innerHTML = '💥';
+                if (obj) obj.appendChild(exp); await playAudio('bomb.mp3');
+                if (obj) { obj.innerHTML = ''; exp.remove(); }
+            }
+        }
+
+        // ============================================================
+        //  進度代碼 功能
+        // ============================================================
+
+        const CMD_SHORT = { forward:'F', backward:'B', left:'L', right:'R', shoot:'S', repeat_2:'R2', repeat_3:'R3' };
+        const CMD_LONG  = { F:'forward', B:'backward', L:'left', R:'right', S:'shoot', R2:'repeat_2', R3:'repeat_3' };
+        const LEVEL_NAMES = ['一','二','三','四','五','六','七'];
+
+        /** 將 program 陣列序列化為精簡字串，如 "F,L,R2,F,B" */
+        function serializeProgram(prog) {
+            if (!prog || prog.length === 0) return '';
+            return prog.map(c => {
+                const s = CMD_SHORT[c.type] || c.type;
+                // repeat 帶 wrap 數
+                if (c.type === 'repeat_2' || c.type === 'repeat_3') return s + (c.wrap > 1 ? 'w' + c.wrap : '');
+                return s;
+            }).join(',');
+        }
+
+        /** 將精簡字串還原為 program 陣列 */
+        function deserializeProgram(str) {
+            if (!str || !str.trim()) return null;   // 空字串表示未過關，回傳 null
+            const result = str.split(',').map(tok => {
+                // 解析 wrap，例如 "R2w3" → type=repeat_2, wrap=3
+                const wIdx = tok.indexOf('w');
+                let key = tok, wrap = 1;
+                if (wIdx !== -1) { key = tok.slice(0, wIdx); wrap = parseInt(tok.slice(wIdx + 1)) || 1; }
+                const type = CMD_LONG[key];
+                if (!type) return null;
+                return { type, wrap };
+            }).filter(Boolean);
+            return result.length > 0 ? result : null;  // 解析失敗也回傳 null
+        }
+
+        /** 產生進度代碼 (Base64-URL JSON) */
+        function generateProgressCode() {
+            const data = {
+                v: 1,                                          // 版本
+                u: unlockedLevel,                              // 已解鎖到哪關 (0-indexed)
+                g: isGameCleared ? 1 : 0,                     // 是否全通
+                c: studentClass,                               // 班級
+                s: studentSeat,                                // 座號
+                p: levelPrograms.map(prog => serializeProgram(prog))  // 每關積木
+            };
+            const json = JSON.stringify(data);
+            return btoa(unescape(encodeURIComponent(json)))
+                       .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+        }
+
+        /** 解析進度代碼 */
+        function parseProgressCode(code) {
+            try {
+                const padded = code.trim().replace(/-/g, '+').replace(/_/g, '/') +
+                               '==='.slice(0, (4 - code.trim().length % 4) % 4);
+                const json = decodeURIComponent(escape(atob(padded)));
+                const data = JSON.parse(json);
+                if (data.v !== 1) throw new Error('版本不符');
+                return data;
+            } catch(e) {
+                return null;
+            }
+        }
+
+        // ---- Modal 開關 ----
+        let pcCurrentTab = 'export';
+
+        function openProgressModal() {
+            pcCurrentTab = 'export';
+            switchPcTab('export');
+            // 更新學生資訊預覽
+            const cls = studentClass || '（未輸入）';
+            const seat = studentSeat || '（未輸入）';
+            document.getElementById('pc-student-display').innerText = `班級：${cls}　座號：${seat}`;
+            // 產生最新代碼
+            document.getElementById('progress-code-textarea').value = generateProgressCode();
+            renderPcLevelSummary();
+            document.getElementById('pc-feedback').innerText = '';
+            document.getElementById('import-code-textarea').value = '';
+            document.getElementById('progress-modal').classList.add('open');
+        }
+
+        function closeProgressModal() {
+            document.getElementById('progress-modal').classList.remove('open');
+        }
+
+        function switchPcTab(tab) {
+            pcCurrentTab = tab;
+            document.getElementById('pc-export-panel').classList.toggle('hidden', tab !== 'export');
+            document.getElementById('pc-import-panel').classList.toggle('hidden', tab !== 'import');
+            document.getElementById('pc-tab-export').classList.toggle('active', tab === 'export');
+            document.getElementById('pc-tab-import').classList.toggle('active', tab === 'import');
+            document.getElementById('pc-feedback').innerText = '';
+        }
+
+        function copyProgressCode() {
+            const ta = document.getElementById('progress-code-textarea');
+            navigator.clipboard.writeText(ta.value).then(() => {
+                showPcFeedback('✅ 代碼已複製到剪貼簿！', 'text-green-600');
+            }).catch(() => {
+                ta.select();
+                document.execCommand('copy');
+                showPcFeedback('✅ 代碼已複製！', 'text-green-600');
+            });
+        }
+
+        function downloadProgressCode() {
+            const code = document.getElementById('progress-code-textarea').value;
+            const blob = new Blob([code], { type: 'text/plain' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = '尋寶進度代碼.txt';
+            a.click();
+            URL.revokeObjectURL(a.href);
+            showPcFeedback('💾 代碼檔案已下載！', 'text-sky-600');
+        }
+
+        function importProgressCode() {
+            const code = document.getElementById('import-code-textarea').value.trim();
+            if (!code) { showPcFeedback('⚠️ 請先貼上進度代碼。', 'text-amber-600'); return; }
+            const data = parseProgressCode(code);
+            if (!data) { showPcFeedback('❌ 代碼無效或格式錯誤，請確認代碼是否完整。', 'text-red-500'); return; }
+
+            // 套用進度
+            unlockedLevel = Math.min(data.u, customLevels.length - 1);
+            isGameCleared = data.g === 1;
+            // 學生資訊（如代碼內有則覆蓋）
+            if (data.c !== undefined) {
+                studentClass = data.c || '';
+                studentSeat  = data.s || '';
+                localStorage.setItem('pirate_student_class', studentClass);
+                localStorage.setItem('pirate_student_seat',  studentSeat);
+                document.getElementById('input-class').value = studentClass;
+                document.getElementById('input-seat').value  = studentSeat;
+            }
+
+            // 將對應關卡的積木完整覆蓋（空字串 / 解析失敗 → null，明確表示「未過關無紀錄」）
+            const importedPrograms = [];
+            const rawList = data.p || [];
+            for (let i = 0; i < customLevels.length; i++) {
+                const parsed = deserializeProgram(rawList[i] || '');
+                importedPrograms.push(parsed);  // null 或 [{...},...]
+            }
+            levelPrograms = importedPrograms;
+
+            // 寫回 localStorage（完全覆蓋瀏覽器舊紀錄）
+            localStorage.setItem('pirate_unlocked_level', unlockedLevel);
+            localStorage.setItem('pirate_game_cleared', isGameCleared ? 'true' : 'false');
+            localStorage.setItem('pirate_level_programs', JSON.stringify(levelPrograms));
+            
+            // 匯入後鎖死學生資訊，防止篡改他人代碼
+            isStudentLocked = true;
+            localStorage.setItem('pirate_student_locked', 'true');
+            applyStudentLockUI();
+
+            // 從 localStorage 重讀以確保記憶體與儲存一致
+            levelPrograms = JSON.parse(localStorage.getItem('pirate_level_programs'));
+
+            if (isGameCleared) document.getElementById('master-badge').classList.remove('hidden');
+
+            showPcFeedback(`✅ 進度已套用！已解鎖到第 ${LEVEL_NAMES[unlockedLevel]} 關。`, 'text-green-600');
+
+            // 立即關閉 modal 並跳到已解鎖的最高關
+            closeProgressModal();
+            playSfx(880, 'sine', 0.15, 0.05);
+            switchLevel(unlockedLevel);
+        }
+
+        function showPcFeedback(msg, cls) {
+            const el = document.getElementById('pc-feedback');
+            el.className = `mt-3 font-bold text-sm text-center ${cls}`;
+            el.innerText = msg;
+        }
+
+        /** 在 modal 底部顯示每關積木摘要 */
+        function renderPcLevelSummary() {
+            const container = document.getElementById('pc-level-summary');
+            container.innerHTML = '';
+            const cmdIcon = { forward:'⬆️', backward:'⬇️', left:'↪️', right:'↩️', shoot:'🎯', repeat_2:'🔁x2', repeat_3:'🔁x3' };
+            customLevels.forEach((lvl, i) => {
+                const prog = levelPrograms[i];
+                const row = document.createElement('div');
+                row.className = 'flex items-start gap-2 text-xs py-1.5 border-b border-gray-100 last:border-0';
+                const label = document.createElement('span');
+                label.className = 'font-bold text-gray-500 w-14 flex-shrink-0';
+                label.innerText = `第${LEVEL_NAMES[i]}關`;
+                const blocks = document.createElement('span');
+                blocks.className = 'text-gray-400 leading-relaxed';
+                if (prog && prog.length > 0) {
+                    blocks.className = 'text-gray-600 leading-relaxed';
+                    blocks.innerText = prog.map(c => {
+                        let icon = cmdIcon[c.type] || c.type;
+                        if ((c.type==='repeat_2'||c.type==='repeat_3') && c.wrap > 1) icon += ` 包${c.wrap}`;
+                        return icon;
+                    }).join('  ');
+                } else {
+                    blocks.innerText = i <= unlockedLevel ? '（未儲存積木）' : '🔒 未解鎖';
+                }
+                row.appendChild(label);
+                row.appendChild(blocks);
+                container.appendChild(row);
+            });
+        }
+
+        /** 學生輸入事件：即時儲存到 localStorage */
+        function saveStudentInfo() {
+            if (isStudentLocked) return;
+            studentClass = document.getElementById('input-class').value.trim();
+            studentSeat  = document.getElementById('input-seat').value.trim();
+            studentPin   = document.getElementById('input-pin').value.trim();
+            localStorage.setItem('pirate_student_class', studentClass);
+            localStorage.setItem('pirate_student_seat',  studentSeat);
+            localStorage.setItem('pirate_student_pin',   studentPin);
+        }
+
+        function applyStudentLockUI() {
+            const cInput = document.getElementById('input-class');
+            const sInput = document.getElementById('input-seat');
+            const pInput = document.getElementById('input-pin');
+            if (isStudentLocked) {
+                cInput.disabled = true;
+                sInput.disabled = true;
+                pInput.disabled = true;
+                cInput.classList.add('opacity-50', 'cursor-not-allowed');
+                sInput.classList.add('opacity-50', 'cursor-not-allowed');
+                pInput.classList.add('opacity-50', 'cursor-not-allowed');
+                cInput.title = "已套用匯入進度，無法更改班級座號與密碼";
+                sInput.title = "已套用匯入進度，無法更改班級座號與密碼";
+                pInput.title = "已套用匯入進度，無法更改班級座號與密碼";
+            }
+        }
+
+        // 點擊背景關閉
+        document.getElementById('progress-modal').addEventListener('click', function(e) {
+            if (e.target === this) closeProgressModal();
+        });
+
+        window.onload = () => {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            isMusicOn = true; toggleMusic();
+            updateCaptureUI();
+
+            // ---- 教師查看模式：偵測 URL 參數 studentCode ----
+            const urlParams = new URLSearchParams(window.location.search);
+            const codeParam = urlParams.get('studentCode');
+            if (codeParam) {
+                const data = parseProgressCode(codeParam);
+                if (data) {
+                    // 靜默套用（不顯示 modal）
+                    unlockedLevel = Math.min(data.u || 0, customLevels.length - 1);
+                    isGameCleared = data.g === 1;
+                    if (data.c !== undefined) {
+                        studentClass = data.c || '';
+                        studentSeat  = data.s || '';
+                    }
+                    const rawList = data.p || [];
+                    levelPrograms = [];
+                    for (let i = 0; i < customLevels.length; i++) {
+                        levelPrograms.push(deserializeProgram(rawList[i] || ''));
+                    }
+                    localStorage.setItem('pirate_unlocked_level', unlockedLevel);
+                    localStorage.setItem('pirate_game_cleared', isGameCleared ? 'true' : 'false');
+                    localStorage.setItem('pirate_level_programs', JSON.stringify(levelPrograms));
+                    localStorage.setItem('pirate_student_class', studentClass);
+                    localStorage.setItem('pirate_student_seat',  studentSeat);
+                    levelPrograms = JSON.parse(localStorage.getItem('pirate_level_programs'));
+
+                    // 顯示教師查看橫幅
+                    const banner = document.createElement('div');
+                    banner.id = 'teacher-view-banner';
+                    banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:300;background:linear-gradient(90deg,#0369a1,#0284c7);color:white;text-align:center;padding:0.45rem 1rem;font-size:0.8rem;font-weight:bold;display:flex;align-items:center;justify-content:center;gap:0.75rem;';
+                    banner.innerHTML = `<span>👁️ 教師查看模式 — 學生：${studentClass} / ${studentSeat}</span><a href="teacher.html" style="background:rgba(255,255,255,0.2);padding:0.2rem 0.75rem;border-radius:0.5rem;text-decoration:none;color:white;font-size:0.75rem;">← 返回評分管理</a>`;
+                    document.body.prepend(banner);
+                    document.body.style.paddingTop = '2.2rem';
+                }
+            }
+
+            // 載入學生資訊到輸入框
+            document.getElementById('input-class').value = studentClass;
+            document.getElementById('input-seat').value  = studentSeat;
+            document.getElementById('input-pin').value   = studentPin;
+            applyStudentLockUI();
+            switchLevel(currentLevelIndex);
+        };
+
+        /** 重置所有資料（自訂 Modal 雙重確認） */
+        function promptClearAllData() {
+            document.getElementById('reset-step-1').classList.remove('hidden');
+            document.getElementById('reset-step-2').classList.add('hidden');
+            document.getElementById('reset-modal').classList.add('open');
+        }
+
+        function closeResetModal() {
+            document.getElementById('reset-modal').classList.remove('open');
+        }
+
+        function showResetStep2() {
+            document.getElementById('reset-step-1').classList.add('hidden');
+            document.getElementById('reset-step-2').classList.remove('hidden');
+        }
+
+        function executeResetData() {
+            localStorage.removeItem('pirate_unlocked_level');
+            localStorage.removeItem('pirate_game_cleared');
+            localStorage.removeItem('pirate_level_programs');
+            localStorage.removeItem('pirate_student_class');
+            localStorage.removeItem('pirate_student_seat');
+            localStorage.removeItem('pirate_student_pin');
+            localStorage.removeItem('pirate_student_locked');
+            // 重新載入頁面並清除網址參數
+            window.location.href = window.location.pathname;
+        }
+
+        // 點擊背景關閉（除了重置 modal，因為我們希望他們點按鈕）
+        document.getElementById('reset-modal').addEventListener('click', function(e) {
+            if (e.target === this) closeResetModal();
+        });
+
+        // ========== 雲端同步核心邏輯 (Google Sheets) ==========
+        // 靜默自動備份至雲端
+        function syncSaveToCloud() {
+            if (!window.CONFIG || !CONFIG.GOOGLE_SHEETS_API_URL) return; // 若無設定 API URL 則不動作
+            
+            const cls = studentClass.trim();
+            const seat = studentSeat.trim();
+            const pin = studentPin.trim();
+            
+            if (!cls || !seat || pin.length !== 6 || isNaN(pin)) {
+                // 如果是本機遊玩且還沒輸入完整個人資訊，先不備份
+                return;
+            }
+            
+            const progressCode = generateProgressCode();
+            
+            fetch(CONFIG.GOOGLE_SHEETS_API_URL, {
+                method: 'POST',
+                mode: 'cors',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({
+                    action: 'submit_record',
+                    class: cls,
+                    seat: seat,
+                    pin: pin,
+                    code: progressCode,
+                    unlockedLevel: unlockedLevel,
+                    gameCleared: isGameCleared ? 1 : 0
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showToast('☁️ 進度已自動同步至雲端', '✅');
+                } else {
+                    showToast(data.message || '雲端存檔失敗', '⚠️');
+                }
+            })
+            .catch(err => {
+                console.error('Cloud save error:', err);
+            });
+        }
+
+        // 手動點擊雲端讀取存檔
+        function syncLoadFromCloud() {
+            if (!window.CONFIG || !CONFIG.GOOGLE_SHEETS_API_URL) {
+                alert('⚠️ 雲端設定尚未完成，請先聯絡老師設定 config.js！');
+                return;
+            }
+            
+            const cls = document.getElementById('input-class').value.trim();
+            const seat = document.getElementById('input-seat').value.trim();
+            const pin = document.getElementById('input-pin').value.trim();
+            
+            if (!cls || !seat || pin.length !== 6 || isNaN(pin)) {
+                alert('⚠️ 請輸入完整的「班級」、「座號」以及「6位數字 PIN 碼」！');
+                return;
+            }
+            
+            // 儲存至本地
+            studentClass = cls;
+            studentSeat = seat;
+            studentPin = pin;
+            saveStudentInfo();
+            
+            const btn = document.getElementById('btn-cloud-load');
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span>⏳ 讀取中...</span>';
+            
+            const url = `${CONFIG.GOOGLE_SHEETS_API_URL}?action=get_student_record&class=${encodeURIComponent(cls)}&seat=${encodeURIComponent(seat)}&pin=${encodeURIComponent(pin)}`;
+            
+            fetch(url, { mode: 'cors' })
+            .then(res => res.json())
+            .then(resData => {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+                
+                if (resData.status === 'success') {
+                    if (resData.found) {
+                        const data = parseProgressCode(resData.data.progressCode);
+                        if (data) {
+                            unlockedLevel = Math.min(data.u, customLevels.length - 1);
+                            isGameCleared = data.g === 1;
+                            
+                            // 反序列化每關使用的積木
+                            const importedPrograms = [];
+                            const rawList = data.p || [];
+                            for (let i = 0; i < customLevels.length; i++) {
+                                const parsed = deserializeProgram(rawList[i] || '');
+                                importedPrograms.push(parsed);
+                            }
+                            levelPrograms = importedPrograms;
+                            
+                            // 寫入本機 LocalStorage
+                            localStorage.setItem('pirate_unlocked_level', unlockedLevel);
+                            localStorage.setItem('pirate_game_cleared', isGameCleared ? 'true' : 'false');
+                            localStorage.setItem('pirate_level_programs', JSON.stringify(levelPrograms));
+                            
+                            // 鎖定學生輸入，防止篡改
+                            isStudentLocked = true;
+                            applyStudentLockUI();
+                            
+                            switchLevel(currentLevelIndex);
+                            showToast('☁️ 雲端進度讀取成功！', '🎉');
+                        } else {
+                            alert('❌ 進度代碼格式解析失敗！');
+                        }
+                    } else {
+                        alert('ℹ️ 雲端查無此帳號紀錄。如果您是首次遊玩，您可以直接開始，之後系統將以此 6 位數 PIN 碼為您自動建立雲端存檔！');
+                    }
+                } else {
+                    alert(resData.message || '讀取雲端存檔失敗');
+                }
+            })
+            .catch(err => {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+                console.error('Cloud load error:', err);
+                alert('❌ 連線至雲端失敗，請檢查網路連線或 Apps Script 部署網址是否正確。');
+            });
+        }
+
+        // ========== 全動態自適應 Toast 提示框 ==========
+        function showToast(message, icon = 'ℹ️') {
+            let toast = document.getElementById('toast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'toast';
+                // 採用質感毛玻璃與圓角陰影設計
+                toast.className = 'fixed bottom-6 left-1/2 -translate-x-1/2 px-6 py-3 bg-slate-800/90 backdrop-blur-md text-white rounded-2xl shadow-xl flex items-center gap-2 opacity-0 translate-y-4 transition-all duration-300 pointer-events-none z-[999] text-sm font-bold border border-white/10';
+                document.body.appendChild(toast);
+            }
+            toast.innerHTML = `<span class="text-lg">${icon}</span> <span>${message}</span>`;
+            
+            // 強制瀏覽器重繪以觸發動畫
+            toast.offsetHeight;
+            toast.classList.remove('opacity-0', 'translate-y-4');
+            
+            if (window.toastTimeout) clearTimeout(window.toastTimeout);
+            
+            window.toastTimeout = setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-4');
+            }, 3000);
+        }
+    </script>
+</body>
+
+</html>
