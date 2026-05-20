@@ -306,12 +306,18 @@
                     <h2 class="text-lg font-bold text-gray-700 mt-4 mb-3 border-b pb-2 flex items-center gap-2">
                         <span>🔄 重複卡片</span>
                     </h2>
-                    <div class="grid grid-cols-2 gap-2">
-                        <button onclick="addCommand('repeat_2')" class="flex items-center justify-center gap-2 p-2 bg-orange-50 border-2 border-orange-200 rounded-xl text-orange-700 font-bold hover:bg-orange-100 transition active:scale-95">
+                    <div class="grid grid-cols-3 gap-2">
+                        <button id="btn-repeat_2" onclick="addCommand('repeat_2')" class="flex flex-col sm:flex-row items-center justify-center gap-1.5 p-2 bg-orange-50 border-2 border-orange-200 rounded-xl text-orange-700 font-bold hover:bg-orange-100 transition active:scale-95 disabled:opacity-50 disabled:grayscale disabled:scale-100">
                             <span class="text-lg">🔁</span><span class="text-xs">x2</span>
+                            <span class="count-label text-[9px] bg-orange-200 px-1.5 rounded-full">∞</span>
                         </button>
-                        <button onclick="addCommand('repeat_3')" class="flex items-center justify-center gap-2 p-2 bg-orange-50 border-2 border-orange-200 rounded-xl text-orange-700 font-bold hover:bg-orange-100 transition active:scale-95">
+                        <button id="btn-repeat_3" onclick="addCommand('repeat_3')" class="flex flex-col sm:flex-row items-center justify-center gap-1.5 p-2 bg-orange-50 border-2 border-orange-200 rounded-xl text-orange-700 font-bold hover:bg-orange-100 transition active:scale-95 disabled:opacity-50 disabled:grayscale disabled:scale-100">
                             <span class="text-lg">🔁</span><span class="text-xs">x3</span>
+                            <span class="count-label text-[9px] bg-orange-200 px-1.5 rounded-full">∞</span>
+                        </button>
+                        <button id="btn-repeat_custom" onclick="addCommand('repeat_custom')" class="flex flex-col sm:flex-row items-center justify-center gap-1.5 p-2 bg-orange-50 border-2 border-orange-200 rounded-xl text-orange-700 font-bold hover:bg-orange-100 transition active:scale-95 disabled:opacity-50 disabled:grayscale disabled:scale-100">
+                            <span class="text-lg">🔁</span><span class="text-xs">自訂</span>
+                            <span class="count-label text-[9px] bg-orange-200 px-1.5 rounded-full">∞</span>
                         </button>
                     </div>
                 </div>
@@ -615,39 +621,58 @@
         }
 
         function updateCardUI() {
-            if (mapData.showRepeat === false) {
-                document.getElementById('repeat-section').classList.add('hidden');
-            } else {
-                document.getElementById('repeat-section').classList.remove('hidden');
-            }
+            const types = ['forward', 'backward', 'left', 'right', 'shoot', 'repeat_2', 'repeat_3', 'repeat_custom'];
+            let showAnyRepeat = false;
 
-            const types = ['forward', 'backward', 'left', 'right', 'shoot'];
             types.forEach(type => {
-                const limit = mapData.limits ? (mapData.limits[type] || 0) : 0;
+                const limit = mapData.limits ? (mapData.limits[type] !== undefined ? mapData.limits[type] : 0) : 0;
                 const used = program.filter(p => p.type === type).length;
                 const btn = document.getElementById(`btn-${type}`);
-                const label = btn.querySelector('.count-label');
+                if (!btn) return;
                 
-                if (limit === 0) {
-                    label.innerText = '∞';
-                    btn.disabled = false;
+                const label = btn.querySelector('.count-label');
+
+                if (limit === -1) {
+                    btn.classList.add('hidden');
                 } else {
-                    const remain = limit - used;
-                    label.innerText = remain;
-                    btn.disabled = remain <= 0;
+                    btn.classList.remove('hidden');
+                    if (type.startsWith('repeat')) {
+                        showAnyRepeat = true;
+                    }
+                    if (label) {
+                        if (limit === 0) {
+                            label.innerText = '∞';
+                            btn.disabled = false;
+                        } else {
+                            const remain = Math.max(0, limit - used);
+                            label.innerText = remain;
+                            btn.disabled = remain <= 0;
+                        }
+                    }
                 }
             });
+
+            // 控制重複區塊的顯示/隱藏
+            const repeatSec = document.getElementById('repeat-section');
+            if (mapData.showRepeat === false || !showAnyRepeat) {
+                repeatSec.classList.add('hidden');
+            } else {
+                repeatSec.classList.remove('hidden');
+            }
         }
 
         const REPEAT_MAP = { 'repeat_2': 2, 'repeat_3': 3 };
 
         function addCommand(type) {
             if (isRunning) return;
-            const limit = mapData.limits ? (mapData.limits[type] || 0) : 0;
+            const limit = mapData.limits ? (mapData.limits[type] !== undefined ? mapData.limits[type] : 0) : 0;
+            if (limit === -1) return; // 禁用
             const used = program.filter(p => p.type === type).length;
             if (limit !== 0 && used >= limit) return;
 
-            program.push({ type, wrap: 1 });
+            const cmd = { type, wrap: 1 };
+            if (type === 'repeat_custom') cmd.count = 4;
+            program.push(cmd);
             renderProgram();
             updateCardUI();
             playSfx(600);
@@ -656,10 +681,22 @@
         function changeWrap(idx, delta) {
             if (isRunning) return;
             const cmd = program[idx];
-            if (!cmd || !REPEAT_MAP[cmd.type]) return;
+            if (!cmd || (!REPEAT_MAP[cmd.type] && cmd.type !== 'repeat_custom')) return;
             cmd.wrap = Math.max(1, Math.min(6, (cmd.wrap || 1) + delta));
             renderProgram();
             playSfx(800, 'sine', 0.03);
+        }
+
+        function changeRepeatCount(idx, val) {
+            if (isRunning) return;
+            const cmd = program[idx];
+            if (!cmd || cmd.type !== 'repeat_custom') return;
+            let count = parseInt(val);
+            if (isNaN(count) || count < 1) count = 1;
+            if (count > 99) count = 99;
+            cmd.count = count;
+            const input = document.querySelector(`#repeat-block-${idx} input[type=number]`);
+            if (input) input.value = count;
         }
 
         function clearProgram() { if (isRunning) return; program = []; renderProgram(); updateCardUI(); }
@@ -670,7 +707,7 @@
             let items = 0;
             while (items < wrapCount && i < track.length) {
                 const card = track[i];
-                if (REPEAT_MAP[card.type]) {
+                if (REPEAT_MAP[card.type] || card.type === 'repeat_custom') {
                     i = findBlockEnd(track, i, card.wrap || 1);
                 } else {
                     i++;
@@ -687,7 +724,7 @@
                 let i = startIdx;
                 while (i < end && i < track.length) {
                     const card = track[i];
-                    const rep = REPEAT_MAP[card.type];
+                    const rep = card.type === 'repeat_custom' ? (card.count || 4) : REPEAT_MAP[card.type];
                     if (rep) {
                         const wrapCount = card.wrap || 1;
                         const bodyEnd = findBlockEnd(track, i, wrapCount);
@@ -739,19 +776,37 @@
                 let items = 0;
                 while (items < wrapCount && i < track.length) {
                     const cmd = track[i];
-                    const isRepeat = REPEAT_MAP[cmd.type];
+                    const isRepeat = REPEAT_MAP[cmd.type] || cmd.type === 'repeat_custom';
                     
                     if (isRepeat) {
+                        const repCount = cmd.type === 'repeat_custom' ? (cmd.count || 4) : REPEAT_MAP[cmd.type];
                         const block = document.createElement('div');
                         block.className = 'repeat-block';
                         block.id = `repeat-block-${i}`;
                         const header = document.createElement('div');
                         header.className = 'repeat-header';
                         header.id = `repeat-header-${i}`;
+                        
+                        let repeatLabel = '';
+                        if (cmd.type === 'repeat_custom') {
+                            const disabledAttr = isRunning ? 'disabled' : '';
+                            repeatLabel = `
+                                <span>🔁 重複 x</span>
+                                <input type="number" min="1" max="99" value="${repCount}" 
+                                    ${disabledAttr}
+                                    onchange="changeRepeatCount(${i}, this.value)"
+                                    onclick="event.stopPropagation()"
+                                    class="w-12 text-center rounded bg-white/20 text-white font-bold text-xs p-0.5 focus:outline-none focus:ring-1 focus:ring-white border border-white/30"
+                                >
+                            `;
+                        } else {
+                            repeatLabel = `<span>🔁 重複 x${repCount}</span>`;
+                        }
+
                         header.innerHTML = `
                             <div class="flex items-center gap-2">
                                 <span class="step-number">${i + 1}</span>
-                                <span>🔁 重複 x${REPEAT_MAP[cmd.type]}</span>
+                                ${repeatLabel}
                                 <span id="repeat-iteration-${i}" class="repeat-iteration-badge hidden ml-2 bg-white/20 text-white text-[10px] px-1.5 py-0.5 rounded-full font-normal"></span>
                             </div>
                             <div class="flex items-center gap-2">

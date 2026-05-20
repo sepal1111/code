@@ -498,14 +498,21 @@
                     <h2 class="text-lg font-bold text-gray-700 mt-4 mb-3 border-b pb-2 flex items-center gap-2">
                         <span>🔄 重複卡片</span>
                     </h2>
-                    <div class="grid grid-cols-2 gap-2">
-                        <button onclick="addCommand('repeat_2')"
+                    <div class="grid grid-cols-3 gap-2">
+                        <button id="btn-repeat_2" onclick="addCommand('repeat_2')"
                             class="card-active flex items-center justify-center gap-2 p-2 bg-orange-50 border-2 border-orange-200 rounded-xl text-orange-700 font-bold transition">
                             <span class="text-lg">🔁</span><span class="text-xs">x2</span>
+                            <span id="limit-repeat_2" class="text-[9px] bg-orange-200 px-1.5 rounded-full">∞</span>
                         </button>
-                        <button onclick="addCommand('repeat_3')"
+                        <button id="btn-repeat_3" onclick="addCommand('repeat_3')"
                             class="card-active flex items-center justify-center gap-2 p-2 bg-orange-50 border-2 border-orange-200 rounded-xl text-orange-700 font-bold transition">
                             <span class="text-lg">🔁</span><span class="text-xs">x3</span>
+                            <span id="limit-repeat_3" class="text-[9px] bg-orange-200 px-1.5 rounded-full">∞</span>
+                        </button>
+                        <button id="btn-repeat_custom" onclick="addCommand('repeat_custom')"
+                            class="card-active flex items-center justify-center gap-2 p-2 bg-orange-50 border-2 border-orange-200 rounded-xl text-orange-700 font-bold transition">
+                            <span class="text-lg">🔁</span><span class="text-xs">自訂</span>
+                            <span id="limit-repeat_custom" class="text-[9px] bg-orange-200 px-1.5 rounded-full">∞</span>
                         </button>
                     </div>
                 </div>
@@ -632,7 +639,7 @@
 
         let customLevels = [
             { name: "第一關：自由航行", desc: "熟悉指令，探索海域。", limits: null, showRepeat: false, obstacles: [], portals: [], startPos: { x: 4, y: 8 }, endPos: { x: 4, y: 0 } },
-            { name: "第二關：邏輯跳躍", desc: "僅一張前進卡？運用重複的魔力！", limits: { forward: 1, backward: 0, left: 0, right: 0 }, showRepeat: true, obstacles: [], portals: [], startPos: { x: 4, y: 8 }, endPos: { x: 4, y: 0 } },
+            { name: "第二關：邏輯跳躍", desc: "僅一張前進卡？運用重複的魔力！", limits: { forward: 1, backward: 0, left: 0, right: 0, repeat_custom: -1 }, showRepeat: true, obstacles: [], portals: [], startPos: { x: 4, y: 8 }, endPos: { x: 4, y: 0 } },
             { name: "第三關：精準控制", desc: "資源限制！請謹慎規劃。", limits: { forward: 6, backward: 2, left: 2, right: 2 }, showRepeat: false, obstacles: [], portals: [], startPos: { x: 4, y: 8 }, endPos: { x: 4, y: 0 } },
             { name: "第四關：避開礁石", desc: "前方有巨石阻擋，請繞道而行。", limits: { forward: 5, left: 2, right: 2, backward: 1 }, showRepeat: true, obstacles: [{ x: 4, y: 4 }], portals: [], startPos: { x: 4, y: 8 }, endPos: { x: 4, y: 0 } },
             { name: "第五關：傳送秘境", desc: "跨越礁石牆，尋找神祕傳送門。", limits: { forward: 2, left: 1, right: 1 }, showRepeat: true, obstacles: [{ x: 0, y: 4 }, { x: 1, y: 4 }, { x: 2, y: 4 }, { x: 3, y: 4 }, { x: 4, y: 4 }, { x: 5, y: 4 }, { x: 6, y: 4 }, { x: 7, y: 4 }, { x: 8, y: 4 }], portals: [{ x: 0, y: 8, targetX: 8, targetY: 0 }, { x: 8, y: 0, targetX: 0, targetY: 8 }], startPos: { x: 4, y: 8 }, endPos: { x: 4, y: 0 } },
@@ -839,16 +846,53 @@
 
         function updateCardLimits() {
             const lvl = customLevels[currentLevelIndex];
-            const types = ['forward', 'backward', 'left', 'right'];
+            const types = ['forward', 'backward', 'left', 'right', 'shoot', 'repeat_2', 'repeat_3', 'repeat_custom'];
+            let showAnyRepeat = false;
+
             types.forEach(type => {
                 const btn = document.getElementById(`btn-${type}`);
                 const limitDisp = document.getElementById(`limit-${type}`);
+                if (!btn) return;
+
+                let limit = undefined;
                 if (lvl.limits && lvl.limits[type] !== undefined) {
-                    const remaining = lvl.limits[type] - program.filter(p => p.type === type).length;
-                    limitDisp.innerText = `${remaining} 張`;
-                    btn.disabled = remaining <= 0;
-                } else { limitDisp.innerText = "∞"; btn.disabled = false; }
+                    limit = lvl.limits[type];
+                } else if (type === 'shoot') {
+                    // 傳統闖關關卡預設沒有 shoot 限制
+                    // 如果關卡沒有特別啟用射擊，我們看關卡有沒有 driftwoods
+                    const hasDriftwoods = lvl.driftwoods && lvl.driftwoods.length > 0;
+                    limit = hasDriftwoods ? 0 : -1;
+                } else {
+                    limit = 0; // 預設啟用且無限
+                }
+
+                if (limit === -1) {
+                    btn.classList.add('hidden');
+                } else {
+                    btn.classList.remove('hidden');
+                    if (type.startsWith('repeat')) {
+                        showAnyRepeat = true;
+                    }
+                    if (limitDisp) {
+                        if (limit === 0) {
+                            limitDisp.innerText = "∞";
+                            btn.disabled = false;
+                        } else {
+                            const remaining = Math.max(0, limit - program.filter(p => p.type === type).length);
+                            limitDisp.innerText = `${remaining} 張`;
+                            btn.disabled = remaining <= 0;
+                        }
+                    }
+                }
             });
+
+            // 控制重複區塊的顯示/隱藏
+            const repeatSec = document.getElementById('repeat-section');
+            if (lvl.showRepeat === false || !showAnyRepeat) {
+                repeatSec.style.display = 'none';
+            } else {
+                repeatSec.style.display = 'block';
+            }
         }
 
         function updateShipPosition() {
@@ -880,7 +924,25 @@
 
         function addCommand(type) {
             if (isRunning || isProgramLocked) return;
+
+            // 檢查限制
+            const lvl = customLevels[currentLevelIndex];
+            let limit = 0;
+            if (lvl.limits && lvl.limits[type] !== undefined) {
+                limit = lvl.limits[type];
+            } else if (type === 'shoot') {
+                const hasDriftwoods = lvl.driftwoods && lvl.driftwoods.length > 0;
+                limit = hasDriftwoods ? 0 : -1;
+            }
+
+            if (limit === -1) return;
+            if (limit > 0) {
+                const used = program.filter(p => p.type === type).length;
+                if (used >= limit) return;
+            }
+
             const cmd = { type, wrap: 1 };
+            if (type === 'repeat_custom') cmd.count = 4;
             program.push(cmd);
             renderProgram();
             updateCardLimits();
@@ -890,10 +952,22 @@
         function changeWrap(idx, delta) {
             if (isRunning || isProgramLocked) return;
             const cmd = program[idx];
-            if (!cmd || !REPEAT_MAP[cmd.type]) return;
+            if (!cmd || (!REPEAT_MAP[cmd.type] && cmd.type !== 'repeat_custom')) return;
             cmd.wrap = Math.max(1, Math.min(6, (cmd.wrap || 1) + delta));
             renderProgram();
             playSfx(800, 'sine', 0.03);
+        }
+
+        function changeRepeatCount(idx, val) {
+            if (isRunning || isProgramLocked) return;
+            const cmd = program[idx];
+            if (!cmd || cmd.type !== 'repeat_custom') return;
+            let count = parseInt(val);
+            if (isNaN(count) || count < 1) count = 1;
+            if (count > 99) count = 99;
+            cmd.count = count;
+            const input = document.querySelector(`#repeat-block-${idx} input[type=number]`);
+            if (input) input.value = count;
         }
 
         function clearProgram() {
@@ -945,7 +1019,7 @@
             let items = 0;
             while (items < wrapCount && i < track.length) {
                 const card = track[i];
-                if (REPEAT_MAP[card.type]) {
+                if (REPEAT_MAP[card.type] || card.type === 'repeat_custom') {
                     i = findBlockEnd(track, i, card.wrap || 1);
                 } else {
                     i++;
@@ -962,7 +1036,7 @@
                 let i = startIdx;
                 while (i < end && i < track.length) {
                     const card = track[i];
-                    const rep = REPEAT_MAP[card.type];
+                    const rep = card.type === 'repeat_custom' ? (card.count || 4) : REPEAT_MAP[card.type];
                     if (rep) {
                         const wrapCount = card.wrap || 1;
                         const bodyEnd = findBlockEnd(track, i, wrapCount);
@@ -1014,19 +1088,37 @@
                 let items = 0;
                 while (items < wrapCount && i < track.length) {
                     const cmd = track[i];
-                    const isRepeat = REPEAT_MAP[cmd.type];
+                    const isRepeat = REPEAT_MAP[cmd.type] || cmd.type === 'repeat_custom';
                     
                     if (isRepeat) {
+                        const repCount = cmd.type === 'repeat_custom' ? (cmd.count || 4) : REPEAT_MAP[cmd.type];
                         const block = document.createElement('div');
                         block.className = 'repeat-block';
                         block.id = `repeat-block-${i}`;
                         const header = document.createElement('div');
                         header.className = 'repeat-header';
                         header.id = `repeat-header-${i}`;
+                        
+                        let repeatLabel = '';
+                        if (cmd.type === 'repeat_custom') {
+                            const disabledAttr = (isRunning || (typeof isProgramLocked !== 'undefined' && isProgramLocked)) ? 'disabled' : '';
+                            repeatLabel = `
+                                <span>🔁 重複 x</span>
+                                <input type="number" min="1" max="99" value="${repCount}" 
+                                    ${disabledAttr}
+                                    onchange="changeRepeatCount(${i}, this.value)"
+                                    onclick="event.stopPropagation()"
+                                    class="w-12 text-center rounded bg-white/20 text-white font-bold text-xs p-0.5 focus:outline-none focus:ring-1 focus:ring-white border border-white/30"
+                                >
+                            `;
+                        } else {
+                            repeatLabel = `<span>🔁 重複 x${repCount}</span>`;
+                        }
+
                         header.innerHTML = `
                             <div class="flex items-center gap-2">
                                 <span class="step-number">${i + 1}</span>
-                                <span>🔁 重複 x${REPEAT_MAP[cmd.type]}</span>
+                                ${repeatLabel}
                                 <span id="repeat-iteration-${i}" class="repeat-iteration-badge hidden ml-2 bg-white/20 text-white text-[10px] px-1.5 py-0.5 rounded-full font-normal"></span>
                             </div>
                             <div class="flex items-center gap-2">
@@ -1387,7 +1479,7 @@
         //  進度代碼 功能
         // ============================================================
 
-        const CMD_SHORT = { forward:'F', backward:'B', left:'L', right:'R', shoot:'S', repeat_2:'R2', repeat_3:'R3' };
+        const CMD_SHORT = { forward:'F', backward:'B', left:'L', right:'R', shoot:'S', repeat_2:'R2', repeat_3:'R3', repeat_custom:'RN' };
         const CMD_LONG  = { F:'forward', B:'backward', L:'left', R:'right', S:'shoot', R2:'repeat_2', R3:'repeat_3' };
         const LEVEL_NAMES = ['一','二','三','四','五','六','七'];
 
@@ -1397,6 +1489,7 @@
             return prog.map(c => {
                 const s = CMD_SHORT[c.type] || c.type;
                 // repeat 帶 wrap 數
+                if (c.type === 'repeat_custom') return 'RN' + (c.count || 4) + (c.wrap > 1 ? 'w' + c.wrap : '');
                 if (c.type === 'repeat_2' || c.type === 'repeat_3') return s + (c.wrap > 1 ? 'w' + c.wrap : '');
                 return s;
             }).join(',');
@@ -1407,12 +1500,23 @@
             if (!str || !str.trim()) return null;   // 空字串表示未過關，回傳 null
             const result = str.split(',').map(tok => {
                 // 解析 wrap，例如 "R2w3" → type=repeat_2, wrap=3
+                // "RN4w3" → type=repeat_custom, count=4, wrap=3
                 const wIdx = tok.indexOf('w');
                 let key = tok, wrap = 1;
                 if (wIdx !== -1) { key = tok.slice(0, wIdx); wrap = parseInt(tok.slice(wIdx + 1)) || 1; }
-                const type = CMD_LONG[key];
+                
+                let type;
+                let count = undefined;
+                if (key.startsWith('RN')) {
+                    type = 'repeat_custom';
+                    count = parseInt(key.slice(2)) || 4;
+                } else {
+                    type = CMD_LONG[key];
+                }
                 if (!type) return null;
-                return { type, wrap };
+                const cmd = { type, wrap };
+                if (count !== undefined) cmd.count = count;
+                return cmd;
             }).filter(Boolean);
             return result.length > 0 ? result : null;  // 解析失敗也回傳 null
         }
@@ -1560,7 +1664,7 @@
         function renderPcLevelSummary() {
             const container = document.getElementById('pc-level-summary');
             container.innerHTML = '';
-            const cmdIcon = { forward:'⬆️', backward:'⬇️', left:'↪️', right:'↩️', shoot:'🎯', repeat_2:'🔁x2', repeat_3:'🔁x3' };
+            const cmdIcon = { forward:'⬆️', backward:'⬇️', left:'↪️', right:'↩️', shoot:'🎯', repeat_2:'🔁x2', repeat_3:'🔁x3', repeat_custom:'🔁x自訂' };
             customLevels.forEach((lvl, i) => {
                 const prog = levelPrograms[i];
                 const row = document.createElement('div');
@@ -1573,8 +1677,8 @@
                 if (prog && prog.length > 0) {
                     blocks.className = 'text-gray-600 leading-relaxed';
                     blocks.innerText = prog.map(c => {
-                        let icon = cmdIcon[c.type] || c.type;
-                        if ((c.type==='repeat_2'||c.type==='repeat_3') && c.wrap > 1) icon += ` 包${c.wrap}`;
+                        let icon = c.type === 'repeat_custom' ? `🔁x${c.count || 4}` : (cmdIcon[c.type] || c.type);
+                        if ((c.type==='repeat_2'||c.type==='repeat_3'||c.type==='repeat_custom') && c.wrap > 1) icon += ` 包${c.wrap}`;
                         return icon;
                     }).join('  ');
                 } else {

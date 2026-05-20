@@ -189,36 +189,80 @@
         <aside class="w-full lg:w-72 flex flex-col gap-6">
             <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
                 <h2 class="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2">
-                    <span>📑 指令限制</span>
+                    <span>📑 指令卡片設定</span>
                 </h2>
-                <div class="space-y-3">
-                    <div class="flex items-center justify-between gap-2">
-                        <span class="text-sm text-slate-600 font-medium">⬆️ 前進</span>
-                        <input type="number" id="limit-forward" value="0" min="0" onchange="updateLimits()" class="w-16 px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-sm text-center">
+                <div class="space-y-2">
+                    <!-- 表頭 -->
+                    <div class="flex items-center justify-between text-xs text-slate-400 pb-1 border-b border-slate-100">
+                        <span>指令與啟用</span>
+                        <span>限制數量 (0=無限制)</span>
                     </div>
-                    <div class="flex items-center justify-between gap-2">
-                        <span class="text-sm text-slate-600 font-medium">⬇️ 後退</span>
-                        <input type="number" id="limit-backward" value="0" min="0" onchange="updateLimits()" class="w-16 px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-sm text-center">
+                    <!-- 前進 -->
+                    <div class="flex items-center justify-between gap-1 py-0.5">
+                        <div class="flex items-center gap-1.5">
+                            <input type="checkbox" id="enable-forward" onchange="updateLimits()" class="w-4 h-4 text-sky-600 border-slate-300 rounded focus:ring-sky-500" checked>
+                            <span class="text-xs text-slate-600 font-bold">⬆️ 前進</span>
+                        </div>
+                        <input type="number" id="limit-forward" value="0" min="0" onchange="updateLimits()" class="w-16 px-2 py-0.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-center">
                     </div>
-                    <div class="flex items-center justify-between gap-2">
-                        <span class="text-sm text-slate-600 font-medium">↪️ 左轉</span>
-                        <input type="number" id="limit-left" value="0" min="0" onchange="updateLimits()" class="w-16 px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-sm text-center">
+                    <!-- 後退 -->
+                    <div class="flex items-center justify-between gap-1 py-0.5">
+                        <div class="flex items-center gap-1.5">
+                            <input type="checkbox" id="enable-backward" onchange="updateLimits()" class="w-4 h-4 text-sky-600 border-slate-300 rounded focus:ring-sky-500" checked>
+                            <span class="text-xs text-slate-600 font-bold">⬇️ 後退</span>
+                        </div>
+                        <input type="number" id="limit-backward" value="0" min="0" onchange="updateLimits()" class="w-16 px-2 py-0.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-center">
                     </div>
-                    <div class="flex items-center justify-between gap-2">
-                        <span class="text-sm text-slate-600 font-medium">↩️ 右轉</span>
-                        <input type="number" id="limit-right" value="0" min="0" onchange="updateLimits()" class="w-16 px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-sm text-center">
+                    <!-- 左轉 -->
+                    <div class="flex items-center justify-between gap-1 py-0.5">
+                        <div class="flex items-center gap-1.5">
+                            <input type="checkbox" id="enable-left" onchange="updateLimits()" class="w-4 h-4 text-sky-600 border-slate-300 rounded focus:ring-sky-500" checked>
+                            <span class="text-xs text-slate-600 font-bold">↪️ 左轉</span>
+                        </div>
+                        <input type="number" id="limit-left" value="0" min="0" onchange="updateLimits()" class="w-16 px-2 py-0.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-center">
                     </div>
-                    <div class="flex items-center justify-between gap-2">
-                        <span class="text-sm text-slate-600 font-medium">🎯 射擊</span>
-                        <input type="number" id="limit-shoot" value="0" min="0" onchange="updateLimits()" class="w-16 px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-sm text-center">
+                    <!-- 右轉 -->
+                    <div class="flex items-center justify-between gap-1 py-0.5">
+                        <div class="flex items-center gap-1.5">
+                            <input type="checkbox" id="enable-right" onchange="updateLimits()" class="w-4 h-4 text-sky-600 border-slate-300 rounded focus:ring-sky-500" checked>
+                            <span class="text-xs text-slate-600 font-bold">↩️ 右轉</span>
+                        </div>
+                        <input type="number" id="limit-right" value="0" min="0" onchange="updateLimits()" class="w-16 px-2 py-0.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-center">
                     </div>
-                    <p class="text-[9px] text-slate-400">* 設定為 0 表示無限量</p>
-                    <div class="pt-2 border-t border-slate-100 flex items-center justify-between">
-                        <span class="text-sm text-slate-600 font-medium">🔄 重複指令</span>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" id="show-repeat" onchange="updateLimits()" class="sr-only peer" checked>
-                            <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-sky-600"></div>
-                        </label>
+                    <!-- 射擊 -->
+                    <div class="flex items-center justify-between gap-1 py-0.5">
+                        <div class="flex items-center gap-1.5">
+                            <input type="checkbox" id="enable-shoot" onchange="updateLimits()" class="w-4 h-4 text-sky-600 border-slate-300 rounded focus:ring-sky-500" checked>
+                            <span class="text-xs text-slate-600 font-bold">🎯 射擊</span>
+                        </div>
+                        <input type="number" id="limit-shoot" value="0" min="0" onchange="updateLimits()" class="w-16 px-2 py-0.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-center">
+                    </div>
+                    
+                    <div class="py-1 border-t border-slate-100 my-1"></div>
+
+                    <!-- 重複 x2 -->
+                    <div class="flex items-center justify-between gap-1 py-0.5">
+                        <div class="flex items-center gap-1.5">
+                            <input type="checkbox" id="enable-repeat_2" onchange="updateLimits()" class="w-4 h-4 text-sky-600 border-slate-300 rounded focus:ring-sky-500" checked>
+                            <span class="text-xs text-slate-600 font-bold">🔁 x2 重複</span>
+                        </div>
+                        <input type="number" id="limit-repeat_2" value="0" min="0" onchange="updateLimits()" class="w-16 px-2 py-0.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-center">
+                    </div>
+                    <!-- 重複 x3 -->
+                    <div class="flex items-center justify-between gap-1 py-0.5">
+                        <div class="flex items-center gap-1.5">
+                            <input type="checkbox" id="enable-repeat_3" onchange="updateLimits()" class="w-4 h-4 text-sky-600 border-slate-300 rounded focus:ring-sky-500" checked>
+                            <span class="text-xs text-slate-600 font-bold">🔁 x3 重複</span>
+                        </div>
+                        <input type="number" id="limit-repeat_3" value="0" min="0" onchange="updateLimits()" class="w-16 px-2 py-0.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-center">
+                    </div>
+                    <!-- 自訂重複 -->
+                    <div class="flex items-center justify-between gap-1 py-0.5">
+                        <div class="flex items-center gap-1.5">
+                            <input type="checkbox" id="enable-repeat_custom" onchange="updateLimits()" class="w-4 h-4 text-sky-600 border-slate-300 rounded focus:ring-sky-500" checked>
+                            <span class="text-xs text-slate-600 font-bold">🔁 自訂重複</span>
+                        </div>
+                        <input type="number" id="limit-repeat_custom" value="0" min="0" onchange="updateLimits()" class="w-16 px-2 py-0.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-center">
                     </div>
                 </div>
             </div>
@@ -278,7 +322,7 @@
             driftwoods: [],
             portals: [], // {x, y, color}
             keyPos: null,
-            limits: { forward: 0, backward: 0, left: 0, right: 0, shoot: 0 },
+            limits: { forward: 0, backward: 0, left: 0, right: 0, shoot: 0, repeat_2: 0, repeat_3: 0, repeat_custom: 0 },
             showRepeat: true,
             name: "",
             desc: ""
@@ -286,14 +330,24 @@
         let savedMaps = JSON.parse(localStorage.getItem('pirate_saved_maps')) || [];
 
         function updateLimits() {
-            mapData.limits = {
-                forward: parseInt(document.getElementById('limit-forward').value) || 0,
-                backward: parseInt(document.getElementById('limit-backward').value) || 0,
-                left: parseInt(document.getElementById('limit-left').value) || 0,
-                right: parseInt(document.getElementById('limit-right').value) || 0,
-                shoot: parseInt(document.getElementById('limit-shoot').value) || 0
-            };
-            mapData.showRepeat = document.getElementById('show-repeat').checked;
+            const types = ['forward', 'backward', 'left', 'right', 'shoot', 'repeat_2', 'repeat_3', 'repeat_custom'];
+            mapData.limits = {};
+            types.forEach(type => {
+                const enabled = document.getElementById(`enable-${type}`).checked;
+                const limitVal = parseInt(document.getElementById(`limit-${type}`).value) || 0;
+                
+                document.getElementById(`limit-${type}`).disabled = !enabled;
+                if (!enabled) {
+                    document.getElementById(`limit-${type}`).classList.add('opacity-40');
+                } else {
+                    document.getElementById(`limit-${type}`).classList.remove('opacity-40');
+                }
+                
+                mapData.limits[type] = enabled ? limitVal : -1;
+            });
+            
+            // 自動計算 showRepeat
+            mapData.showRepeat = (mapData.limits['repeat_2'] !== -1 || mapData.limits['repeat_3'] !== -1 || mapData.limits['repeat_custom'] !== -1);
         }
 
         function initEditor() {
@@ -320,13 +374,34 @@
             renderPortalLines();
 
             // 同步 UI 狀態
-            if (!mapData.limits) mapData.limits = { forward: 0, backward: 0, left: 0, right: 0, shoot: 0 };
-            document.getElementById('limit-forward').value = mapData.limits.forward;
-            document.getElementById('limit-backward').value = mapData.limits.backward;
-            document.getElementById('limit-left').value = mapData.limits.left;
-            document.getElementById('limit-right').value = mapData.limits.right;
-            document.getElementById('limit-shoot').value = mapData.limits.shoot;
-            document.getElementById('show-repeat').checked = mapData.showRepeat !== false;
+            if (!mapData.limits) {
+                mapData.limits = { forward: 0, backward: 0, left: 0, right: 0, shoot: 0, repeat_2: 0, repeat_3: 0, repeat_custom: 0 };
+            }
+            const types = ['forward', 'backward', 'left', 'right', 'shoot', 'repeat_2', 'repeat_3', 'repeat_custom'];
+            types.forEach(type => {
+                let limit = mapData.limits[type];
+                
+                // 相容性處理：如果舊地圖 limits 裡沒有某個 key，或者 showRepeat 為 false
+                if (limit === undefined) {
+                    if (type.startsWith('repeat')) {
+                        limit = (mapData.showRepeat !== false) ? 0 : -1;
+                    } else {
+                        limit = 0;
+                    }
+                }
+                
+                const enabled = (limit !== -1);
+                const limitVal = (limit === -1) ? 0 : limit;
+                
+                document.getElementById(`enable-${type}`).checked = enabled;
+                document.getElementById(`limit-${type}`).value = limitVal;
+                document.getElementById(`limit-${type}`).disabled = !enabled;
+                if (!enabled) {
+                    document.getElementById(`limit-${type}`).classList.add('opacity-40');
+                } else {
+                    document.getElementById(`limit-${type}`).classList.remove('opacity-40');
+                }
+            });
         }
 
         function renderCellContent(cell, x, y) {
@@ -521,7 +596,7 @@
                     if (data && data.size) {
                         mapData = data;
                         // 確保相容性
-                        if (!mapData.limits) mapData.limits = { forward: 0, backward: 0, left: 0, right: 0, shoot: 0 };
+                        if (!mapData.limits) mapData.limits = { forward: 0, backward: 0, left: 0, right: 0, shoot: 0, repeat_2: 0, repeat_3: 0, repeat_custom: 0 };
                         if (mapData.showRepeat === undefined) mapData.showRepeat = true;
                         
                         gridSize = mapData.size || 9;
@@ -553,7 +628,7 @@
                     driftwoods: [],
                     portals: [],
                     keyPos: null,
-                    limits: { forward: 0, backward: 0, left: 0, right: 0, shoot: 0 },
+                    limits: { forward: 0, backward: 0, left: 0, right: 0, shoot: 0, repeat_2: 0, repeat_3: 0, repeat_custom: 0 },
                     showRepeat: true
                 };
                 initEditor();

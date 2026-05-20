@@ -178,12 +178,24 @@ const CMD_LONG = { F:'forward', B:'backward', L:'left', R:'right', S:'shoot', R2
 function deserializeProgram(str) {
     if (!str || !str.trim()) return null;
     const result = str.split(',').map(tok => {
+        // 解析 wrap，例如 "R2w3" → type=repeat_2, wrap=3
+        // "RN4w3" → type=repeat_custom, count=4, wrap=3
         const wIdx = tok.indexOf('w');
         let key = tok, wrap = 1;
         if (wIdx !== -1) { key = tok.slice(0, wIdx); wrap = parseInt(tok.slice(wIdx + 1)) || 1; }
-        const type = CMD_LONG[key];
+        
+        let type;
+        let count = undefined;
+        if (key.startsWith('RN')) {
+            type = 'repeat_custom';
+            count = parseInt(key.slice(2)) || 4;
+        } else {
+            type = CMD_LONG[key];
+        }
         if (!type) return null;
-        return { type, wrap };
+        const cmd = { type, wrap };
+        if (count !== undefined) cmd.count = count;
+        return cmd;
     }).filter(Boolean);
     return result.length > 0 ? result : null;
 }
