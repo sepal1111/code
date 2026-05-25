@@ -549,6 +549,7 @@
                         
                         closeImportModal();
                         GRID_SIZE = mapData.size; // 更新網格尺寸
+                        shipState = { x: mapData.startPos.x, y: mapData.startPos.y, dir: 0 }; // 重置船隻位置為新地圖的起點
                         initBoard();
                         updateCardUI();
                         showToast('地圖匯入成功！', '🎉');
@@ -578,6 +579,9 @@
                     // 確保相容性
                     if (!mapData.limits) mapData.limits = { forward: 0, backward: 0, left: 0, right: 0, shoot: 0 };
                     if (mapData.showRepeat === undefined) mapData.showRepeat = true;
+                    
+                    GRID_SIZE = mapData.size || 9; // 同步網格尺寸
+                    shipState = { x: mapData.startPos.x, y: mapData.startPos.y, dir: 0 }; // 同步船隻位置為地圖起點
                     
                     // 更新 UI 顯示
                     document.getElementById('map-display-name').innerText = mapData.name || '✨ 自訂冒險挑戰';
@@ -1141,7 +1145,7 @@
         window.onload = () => {
             loadMap();
             initBoard();
-            updateCardLimits();
+            updateCardUI();
         };
 
         // 監聽第一次點擊以啟動音樂 (瀏覽器限制自動播放)
