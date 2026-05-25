@@ -328,6 +328,7 @@
                 <div class="flex justify-between items-center mb-3">
                     <h2 class="text-lg font-bold text-gray-700">💾 程式序列</h2>
                     <div class="flex gap-2">
+                        <button onclick="resetMap()" class="text-xs text-sky-600 px-3 py-1 bg-sky-50 rounded-lg border border-sky-200 transition hover:bg-sky-100 font-bold">重置地圖</button>
                         <button onclick="popCommand()" class="text-xs text-amber-600 px-3 py-1 bg-amber-50 rounded-lg border border-amber-200 transition hover:bg-amber-100 font-bold">復原</button>
                         <button onclick="clearProgram()" class="text-xs text-red-500 px-3 py-1 bg-red-50 rounded-lg border border-red-200 transition hover:bg-red-100 font-bold">清除全部</button>
                     </div>
@@ -384,6 +385,7 @@
         let shipState = { x: mapData.startPos.x, y: mapData.startPos.y, dir: 0 };
         let program = [];
         let isRunning = false;
+        let stopExecution = false;
         let hasKey = false;
         let levelStartTime = Date.now();
         let timerInterval = null;
@@ -707,6 +709,12 @@
 
         function clearProgram() { if (isRunning) return; program = []; renderProgram(); updateCardUI(); }
         function popCommand() { if (isRunning || program.length === 0) return; program.pop(); renderProgram(); updateCardUI(); }
+        function resetMap() {
+            if (isRunning) return;
+            shipState = { x: mapData.startPos.x, y: mapData.startPos.y, dir: 0 };
+            initBoard();
+            showToast('地圖已重置', '🔄');
+        }
 
         function findBlockEnd(track, startIdx, wrapCount) {
             let i = startIdx + 1;
@@ -857,10 +865,54 @@
 
         function removeCommand(index) { if (isRunning) return; program.splice(index, 1); renderProgram(); updateCardUI(); }
 
+        function resetExecutionState() {
+            // 清除所有高亮與 iteration badge
+            document.querySelectorAll('.command-card, .repeat-header, .repeat-block').forEach(el => {
+                el.classList.remove('executing');
+            });
+            document.querySelectorAll('.repeat-iteration-badge').forEach(badge => {
+                badge.classList.add('hidden');
+                badge.innerText = '';
+            });
+
+            // 重設船隻位置與方向
+            shipState = { x: mapData.startPos.x, y: mapData.startPos.y, dir: 0 };
+            updateShipPosition();
+
+            // 還原漂流木與鑰匙等物件
+            hasKey = false;
+            activeDriftwoods = JSON.parse(JSON.stringify(mapData.driftwoods || []));
+            for (let y = 0; y < GRID_SIZE; y++) {
+                for (let x = 0; x < GRID_SIZE; x++) {
+                    renderCellObject(x, y, document.getElementById(`obj-${x}-${y}`));
+                }
+            }
+
+            // 還原按鈕狀態
+            isRunning = false;
+            const runBtn = document.getElementById('run-btn');
+            runBtn.innerHTML = '🚀 開始航行';
+            runBtn.className = 'mt-4 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-2xl shadow-lg transition active:scale-95 text-lg';
+
+            showToast('已停止航行', '🛑');
+        }
+
         async function runProgram() {
-            if (isRunning || program.length === 0) return;
+            if (isRunning) {
+                // 如果已經在執行中被點擊，則代表玩家要停止
+                stopExecution = true;
+                resetExecutionState();
+                return;
+            }
+            if (program.length === 0) return;
             isRunning = true;
-            document.getElementById('run-btn').disabled = true;
+            stopExecution = false;
+            
+            const runBtn = document.getElementById('run-btn');
+            runBtn.innerHTML = '🛑 停止航行';
+            runBtn.className = 'mt-4 w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-2xl shadow-lg transition active:scale-95 text-lg';
+            runBtn.disabled = false; // 讓按鈕可點擊以進行停止
+            
             hasKey = false;
             activeDriftwoods = JSON.parse(JSON.stringify(mapData.driftwoods || []));
             
@@ -874,11 +926,13 @@
             updateShipPosition();
             
             await new Promise(r => setTimeout(r, 800));
+            if (stopExecution) return;
             
             const expanded = expandProgram(program);
             let winStatus = 'running';
             
             for (let i = 0; i < expanded.length; i++) {
+                if (stopExecution) break;
                 const step = expanded[i];
                 const originalIdx = step.originalIdx;
                 
@@ -920,6 +974,7 @@
                     }
 
                     await new Promise(r => setTimeout(r, 800));
+                    if (stopExecution) break;
                 }
                 else if (step.type === 'repeat_end') {
                     if (step.activeRepeats) {
@@ -938,10 +993,11 @@
                     }
 
                     await new Promise(r => setTimeout(r, 400));
+                    if (stopExecution) break;
                 }
                 else if (step.type === 'command') {
                     // 高亮目前執行的原始指令卡片
-                    const element = document.getElementById(`program-item-${originalIdx}`);
+                    const element = document.getElementById('program-item-' + originalIdx);
                     if (element) {
                         element.classList.add('executing');
                         const container = document.getElementById('program-list');
@@ -994,6 +1050,7 @@
                         }
 
                         await new Promise(r => setTimeout(r, 600));
+                        if (stopExecution) break;
 
                         if (res === 'hit' || res === 'out') {
                             winStatus = 'fail';
@@ -1022,6 +1079,8 @@
                 }
             }
 
+            if (stopExecution) return;
+
             if (winStatus !== 'fail') {
                 if (shipState.x === mapData.endPos.x && shipState.y === mapData.endPos.y) {
                     if (mapData.keyPos && !hasKey) {
@@ -1037,7 +1096,8 @@
             }
 
             isRunning = false;
-            document.getElementById('run-btn').disabled = false;
+            runBtn.innerHTML = '🚀 開始航行';
+            runBtn.className = 'mt-4 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-2xl shadow-lg transition active:scale-95 text-lg';
         }
 
         async function performShoot() {
@@ -1118,7 +1178,7 @@
         function closeModal() {
             document.getElementById('modal').classList.add('hidden');
             shipState = { x: mapData.startPos.x, y: mapData.startPos.y, dir: 0 };
-            updateShipPosition();
+            initBoard();
             
             // 清除執行高亮
             document.querySelectorAll('.command-card, .repeat-header, .repeat-block').forEach(el => el.classList.remove('executing'));

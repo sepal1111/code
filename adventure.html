@@ -514,6 +514,7 @@
                 <div class="flex justify-between items-center mb-3">
                     <h2 class="text-lg font-bold text-gray-700">💾 程式序列</h2>
                     <div class="flex gap-2">
+                        <button id="btn-reset-map" onclick="resetMap()" class="text-xs text-sky-600 px-3 py-1 bg-sky-50 rounded-lg border border-sky-200 transition hover:bg-sky-100 whitespace-nowrap w-max font-bold">重置地圖</button>
                         <button id="btn-pop" onclick="popCommand()" class="text-xs text-amber-600 px-3 py-1 bg-amber-50 rounded-lg border border-amber-200 transition hover:bg-amber-100 whitespace-nowrap w-max font-bold">復原</button>
                         <button id="btn-clear" onclick="clearProgram()" class="text-xs text-red-500 px-3 py-1 bg-red-50 rounded-lg border border-red-200 transition hover:bg-red-100 whitespace-nowrap w-max font-bold">清除全部</button>
                     </div>
@@ -645,6 +646,7 @@
         let program = [];
         let isProgramLocked = false;   // 已過關則顯示紀錄且鎖定編輯
         let isRunning = false;
+        let stopExecution = false;
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         let isMusicOn = false;
         let hasKey = false;
@@ -976,6 +978,11 @@
             renderProgram();
             updateCardLimits();
         }
+        function resetMap() {
+            if (isRunning) return;
+            shipState = { x: startPos.x, y: startPos.y, dir: 0 };
+            initBoard();
+        }
 
         /** 根據 isProgramLocked 更新 UI 狀態 */
         function applyProgramLockUI() {
@@ -1162,15 +1169,48 @@
             updateCardLimits();
         }
 
+        function resetExecutionState() {
+            // 清除執行高亮與 iteration badge
+            document.querySelectorAll('.command-card, .repeat-header, .repeat-block').forEach(el => el.classList.remove('executing'));
+            document.querySelectorAll('.repeat-iteration-badge').forEach(badge => {
+                badge.classList.add('hidden');
+                badge.innerText = '';
+            });
+
+            // 還原船隻與關卡地圖物件
+            hasKey = false;
+            shipState = { x: startPos.x, y: startPos.y, dir: 0 };
+            initBoard();
+
+            // 還原按鈕狀態
+            isRunning = false;
+            const runBtn = document.getElementById('run-btn');
+            runBtn.innerText = '🚀 開始航行';
+            runBtn.className = 'mt-4 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-2xl shadow-lg transition active:scale-95 text-lg';
+        }
+
         async function runProgram() {
-            if (isRunning || program.length === 0) return;
+            if (isRunning) {
+                // 如果已經在執行中被點擊，則代表玩家要停止
+                stopExecution = true;
+                resetExecutionState();
+                return;
+            }
+            if (program.length === 0) return;
             isRunning = true;
-            document.getElementById('run-btn').disabled = true;
+            stopExecution = false;
+            
+            const runBtn = document.getElementById('run-btn');
+            runBtn.innerText = '🛑 停止航行';
+            runBtn.className = 'mt-4 w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-2xl shadow-lg transition active:scale-95 text-lg';
+            runBtn.disabled = false; // 讓按鈕可點擊以進行停止
+            
             hasKey = false;
             const lvl = customLevels[currentLevelIndex];
             shipState = { x: startPos.x, y: startPos.y, dir: 0 };
             updateShipPosition();
             await sleep(800);
+            if (stopExecution) return;
 
             const expanded = expandProgram(program);
             let winStatus = false;
@@ -1179,6 +1219,7 @@
             let commandStepIndex = 0;
 
             for (let i = 0; i < expanded.length; i++) {
+                if (stopExecution) break;
                 const step = expanded[i];
                 const originalIdx = step.originalIdx;
                 
@@ -1220,6 +1261,7 @@
                     }
 
                     await sleep(800);
+                    if (stopExecution) break;
                 } 
                 else if (step.type === 'repeat_end') {
                     if (step.activeRepeats) {
@@ -1238,6 +1280,7 @@
                     }
 
                     await sleep(400);
+                    if (stopExecution) break;
                 }
                 else if (step.type === 'command') {
                     commandStepIndex++;
@@ -1295,6 +1338,7 @@
                         }
 
                         await sleep(600);
+                        if (stopExecution) break;
 
                         if (res === 'hit' || res === 'out') {
                             playSfx(100, 'sawtooth', 0.5, 0.1);
@@ -1325,6 +1369,9 @@
                     if (winStatus) break;
                 }
             }
+
+            if (stopExecution) return;
+
             if (winStatus !== 'fail') {
                 if (shipState.x === endPos.x && shipState.y === endPos.y) {
                     if (lvl.keyPos && !hasKey) winStatus = 'no-key';
@@ -1361,7 +1408,8 @@
                 showModal('⚓ 航行中止', failMsg, '🗺️', '調整指令', false);
             }
             isRunning = false;
-            document.getElementById('run-btn').disabled = false;
+            runBtn.innerText = '🚀 開始航行';
+            runBtn.className = 'mt-4 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-2xl shadow-lg transition active:scale-95 text-lg';
         }
 
         function moveShip(type) {
@@ -1430,8 +1478,12 @@
 
         function closeModal() {
             document.getElementById('modal').classList.add('hidden');
-            if (hasWonCurrentRun && currentLevelIndex < customLevels.length - 1) switchLevel(currentLevelIndex + 1);
-            else { shipState = { x: startPos.x, y: startPos.y, dir: 0 }; updateShipPosition(); }
+            if (hasWonCurrentRun && currentLevelIndex < customLevels.length - 1) {
+                switchLevel(currentLevelIndex + 1);
+            } else {
+                shipState = { x: startPos.x, y: startPos.y, dir: 0 };
+                initBoard();
+            }
             hasWonCurrentRun = false;
             
             // 清除執行高亮
