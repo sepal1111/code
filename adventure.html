@@ -766,7 +766,9 @@
                     const objLayer = document.createElement('div');
                     objLayer.className = 'cell-object';
                     objLayer.id = `obj-${x}-${y}`;
-                    if (x === endPos.x && y === endPos.y) {
+                    if (x === startPos.x && y === startPos.y) {
+                        objLayer.innerHTML = '<span class="text-2xl drop-shadow-md">🚩</span>';
+                    } else if (x === endPos.x && y === endPos.y) {
                         objLayer.innerHTML = '<span class="text-2xl drop-shadow-md">💰</span>';
                         cell.classList.add('bg-yellow-400/10');
                     } else if (lvl.keyPos && x === lvl.keyPos.x && y === lvl.keyPos.y) {
