@@ -945,6 +945,9 @@
                     // 如果關卡沒有特別啟用射擊，我們看關卡有沒有 driftwoods
                     const hasDriftwoods = lvl.driftwoods && lvl.driftwoods.length > 0;
                     limit = hasDriftwoods ? 0 : -1;
+                } else if (type === 'wait') {
+                    // 1-8 關停用等待指令，第 9 關（索引 8）啟用且無限制
+                    limit = (currentLevelIndex === 8) ? 0 : -1;
                 } else {
                     limit = 0; // 預設啟用且無限
                 }
@@ -1016,6 +1019,8 @@
             } else if (type === 'shoot') {
                 const hasDriftwoods = lvl.driftwoods && lvl.driftwoods.length > 0;
                 limit = hasDriftwoods ? 0 : -1;
+            } else if (type === 'wait') {
+                limit = (currentLevelIndex === 8) ? 0 : -1;
             }
 
             if (limit === -1) return;

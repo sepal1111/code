@@ -1,3 +1,19 @@
+## [2026-05-27 11:01:00] - 停用闖關模式第 1 至 8 關的等待指令
+
+*   **使用者提示詞 / 需求 (User Prompt):**
+    > 闖關模式中的關卡，1-8關要停用等待指令
+
+*   **實作策略與動機 (Implementation Strategy):**
+    *   在 `adventure.html` 中，限制等待 (wait) 指令僅在引進巡邏鯊魚的第 9 關啟用。
+    *   修改 `updateCardLimits()` 與 `addCommand()`，如果目前關卡不是第 9 關（索引 8）且關卡 limits 沒有特別定義該指令，預設將其限制設為 `-1`（停用並隱藏按鈕）。
+    *   這可以維持關卡難度設計的純粹性，避免玩家在不需要的低關卡使用等待指令。
+
+*   **受影響檔案與變更 (Files Affected & Actions):**
+    *   `[MODIFIED]` `adventure.html`: 更新 `updateCardLimits()` 與 `addCommand()` 的預設限制規則。
+    *   `[MODIFIED]` `dev_history.log`: 追加本條日誌紀錄。
+
+*   **目前狀態 (Current Status):** 已完成 Completed
+
 ## [2026-05-27 10:56:00] - 修正船隻與巡邏鯊魚移動時序與碰撞判定機制
 
 *   **使用者提示詞 / 需求 (User Prompt):**
