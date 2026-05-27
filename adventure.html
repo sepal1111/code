@@ -373,6 +373,31 @@
             border-color: #0ea5e9;
             box-shadow: 0 0 0 2px rgba(14,165,233,0.15);
         }
+
+        .stinky-aura {
+            background-color: rgba(34, 197, 94, 0.15) !important;
+            box-shadow: inset 0 0 10px rgba(34, 197, 94, 0.35) !important;
+            position: relative;
+        }
+        .stinky-aura::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle, rgba(134, 239, 172, 0.3) 0%, transparent 80%);
+            pointer-events: none;
+            z-index: 1;
+            animation: stinky-fog 2s ease-in-out infinite;
+        }
+        @keyframes stinky-fog {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 0.7; }
+        }
+
+        .shark-track {
+            background-color: rgba(239, 68, 68, 0.08) !important;
+            box-shadow: inset 0 0 8px rgba(239, 68, 68, 0.15) !important;
+            border: 1px dashed rgba(239, 68, 68, 0.3) !important;
+        }
     </style>
 </head>
 
@@ -440,6 +465,8 @@
             <button onclick="switchLevel(4)" id="lvl-btn-4" class="lvl-btn lvl-locked px-3 py-1 rounded-full text-xs font-bold transition">第五關 🔒</button>
             <button onclick="switchLevel(5)" id="lvl-btn-5" class="lvl-btn lvl-locked px-3 py-1 rounded-full text-xs font-bold transition">第六關 🔒</button>
             <button onclick="switchLevel(6)" id="lvl-btn-6" class="lvl-btn lvl-locked px-3 py-1 rounded-full text-xs font-bold transition">第七關 🔒</button>
+            <button onclick="switchLevel(7)" id="lvl-btn-7" class="lvl-btn lvl-locked px-3 py-1 rounded-full text-xs font-bold transition">第八關 🔒</button>
+            <button onclick="switchLevel(8)" id="lvl-btn-8" class="lvl-btn lvl-locked px-3 py-1 rounded-full text-xs font-bold transition">第九關 🔒</button>
         </div>
         <p id="level-desc" class="text-sky-600 mt-3 font-bold text-sm bg-white/90 px-5 py-1.5 rounded-full border border-sky-100 shadow-sm inline-block mx-2 whitespace-nowrap w-max">準備冒險...</p>
         <span id="timer-display" class="hidden text-orange-600 mt-3 font-bold text-sm bg-white/90 px-5 py-1.5 rounded-full border border-orange-100 shadow-sm inline-block mx-2 whitespace-nowrap w-max" style="font-family: monospace, sans-serif;">⏱️ 00:00</span>
@@ -457,7 +484,7 @@
                 <h2 class="text-lg font-bold text-gray-700 mb-3 border-b pb-2 flex items-center gap-2">
                     <span>📜 指令卡片</span>
                 </h2>
-                <div class="grid grid-cols-4 gap-2">
+                <div class="grid grid-cols-5 gap-2">
                     <button id="btn-forward" onclick="addCommand('forward')"
                         class="card-active flex flex-col items-center p-2 bg-blue-50 border-2 border-blue-200 rounded-xl text-blue-700 font-bold disabled:opacity-40">
                         <span class="text-xl">⬆️</span>
@@ -477,6 +504,11 @@
                         class="card-active flex flex-col items-center p-2 bg-indigo-50 border-2 border-indigo-200 rounded-xl text-indigo-700 font-bold disabled:opacity-40">
                         <span class="text-xl">↩️</span>
                         <span id="limit-right" class="text-[9px] mt-1 bg-indigo-200 px-1.5 rounded-full">∞</span>
+                    </button>
+                    <button id="btn-wait" onclick="addCommand('wait')"
+                        class="card-active flex flex-col items-center p-2 bg-slate-50 border-2 border-slate-200 rounded-xl text-slate-700 font-bold disabled:opacity-40">
+                        <span class="text-xl">⏳</span>
+                        <span id="limit-wait" class="text-[9px] mt-1 bg-slate-200 px-1.5 rounded-full">∞</span>
                     </button>
                     <button id="btn-shoot" onclick="addCommand('shoot')"
                         class="card-active hidden flex flex-col items-center p-2 bg-red-50 border-2 border-red-200 rounded-xl text-red-700 font-bold disabled:opacity-40">
@@ -636,7 +668,9 @@
             { name: "第四關：避開礁石", desc: "前方有巨石阻擋，請繞道而行。", limits: { forward: 5, left: 2, right: 2, backward: 1 }, showRepeat: true, obstacles: [{ x: 4, y: 4 }], portals: [], startPos: { x: 4, y: 8 }, endPos: { x: 4, y: 0 } },
             { name: "第五關：傳送秘境", desc: "跨越礁石牆，尋找神祕傳送門。", limits: { forward: 2, left: 1, right: 1 }, showRepeat: true, obstacles: [{ x: 0, y: 4 }, { x: 1, y: 4 }, { x: 2, y: 4 }, { x: 3, y: 4 }, { x: 4, y: 4 }, { x: 5, y: 4 }, { x: 6, y: 4 }, { x: 7, y: 4 }, { x: 8, y: 4 }], portals: [{ x: 0, y: 8, targetX: 8, targetY: 0 }, { x: 8, y: 0, targetX: 0, targetY: 8 }], startPos: { x: 4, y: 8 }, endPos: { x: 4, y: 0 } },
             { name: "第六關：綜合闖關", desc: "靈活運用傳送與重複指令。", limits: { forward: 2, backward: 2, left: 2, right: 2 }, showRepeat: true, obstacles: [{ x: 3, y: 7 }, { x: 1, y: 6 }, { x: 3, y: 5 }, { x: 1, y: 4 }, { x: 3, y: 3 }, { x: 1, y: 2 }, { x: 1, y: 0 }, { x: 7, y: 0 }, { x: 7, y: 2 }, { x: 7, y: 4 }, { x: 7, y: 6 }, { x: 5, y: 7 }, { x: 5, y: 5 }, { x: 5, y: 3 }, { x: 4, y: 1 }], portals: [], startPos: { x: 4, y: 8 }, endPos: { x: 4, y: 0 } },
-            { name: "第七關：時空金鑰", desc: "運用傳送門穿梭海域取得金鑰，並解鎖神秘寶藏。", limits: null, showRepeat: true, obstacles: [{ x: 0, y: 3 }, { x: 1, y: 3 }, { x: 2, y: 3 }, { x: 6, y: 5 }, { x: 7, y: 5 }, { x: 8, y: 5 }, { x: 4, y: 4 }, { x: 3, y: 4 }, { x: 5, y: 4 }], portals: [{ x: 0, y: 0, targetX: 8, targetY: 8 }, { x: 8, y: 8, targetX: 0, targetY: 0 }], keyPos: { x: 0, y: 5 }, startPos: { x: 4, y: 8 }, endPos: { x: 8, y: 4 } }
+            { name: "第七關：時空金鑰", desc: "運用傳送門穿梭海域取得金鑰，並解鎖神秘寶藏。", limits: null, showRepeat: true, obstacles: [{ x: 0, y: 3 }, { x: 1, y: 3 }, { x: 2, y: 3 }, { x: 6, y: 5 }, { x: 7, y: 5 }, { x: 8, y: 5 }, { x: 4, y: 4 }, { x: 3, y: 4 }, { x: 5, y: 4 }], portals: [{ x: 0, y: 0, targetX: 8, targetY: 8 }, { x: 8, y: 8, targetX: 0, targetY: 0 }], keyPos: { x: 0, y: 5 }, startPos: { x: 4, y: 8 }, endPos: { x: 8, y: 4 } },
+            { name: "第八關：臭氣突襲", desc: "海域出現了臭氣熏天的垃圾島，靠近一格內就會被臭死！請小心避開周圍的警戒區。", limits: null, showRepeat: true, obstacles: [], portals: [], trashIslands: [{ x: 4, y: 4 }], startPos: { x: 4, y: 8 }, endPos: { x: 4, y: 0 } },
+            { name: "第九關：鯊魚海域", desc: "前方有飢餓的鯊魚在巡邏！看清牠的移動軌跡，精準規劃避開牠。", limits: null, showRepeat: true, obstacles: [{ x: 2, y: 5 }, { x: 3, y: 5 }, { x: 5, y: 5 }, { x: 6, y: 5 }, { x: 2, y: 3 }, { x: 3, y: 3 }, { x: 5, y: 3 }, { x: 6, y: 3 }], portals: [], sharks: [{ id: 9001, x1: 1, y1: 4, x2: 7, y2: 4, curX: 1, curY: 4, direction: 1 }], startPos: { x: 4, y: 8 }, endPos: { x: 4, y: 0 } }
         ];
 
         let currentLevelIndex = 0;
@@ -644,7 +678,7 @@
         let shipIcon = localStorage.getItem('pirate_ship_icon') || '🚢';
         let shipState = { x: 4, y: 8, dir: 0 };
         let program = [];
-        let isProgramLocked = false;   // 已過關則顯示紀錄且鎖定編輯
+        let isProgramLocked = false;
         let isRunning = false;
         let stopExecution = false;
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -656,11 +690,13 @@
         let gameTimerInterval = null;
         let isAutoCapture = localStorage.getItem('pirate_auto_capture') !== 'false';
 
-        // ---- 進度代碼：載入已儲存的關卡積木紀錄 ----
-        // levelPrograms[i] = 第 i 關過關時使用的積木陣列
-        let levelPrograms = JSON.parse(localStorage.getItem('pirate_level_programs') || 'null') || Array(7).fill(null);
+        let levelPrograms = JSON.parse(localStorage.getItem('pirate_level_programs') || 'null');
+        if (!levelPrograms) {
+            levelPrograms = Array(9).fill(null);
+        } else {
+            while (levelPrograms.length < 9) levelPrograms.push(null);
+        }
 
-        // ---- 學生資訊 ----
         let studentClass = localStorage.getItem('pirate_student_class') || '';
         let studentSeat  = localStorage.getItem('pirate_student_seat')  || '';
         let isStudentLocked = localStorage.getItem('pirate_student_locked') === 'true';
@@ -677,6 +713,7 @@
         bgm.addEventListener('ended', () => { if (isMusicOn) playRandomTrack(); });
 
         let activeDriftwoods = [];
+        let activeSharks = [];
 
         function playSfx(freq, type = 'sine', duration = 0.1, volume = 0.05) {
             try {
@@ -711,6 +748,97 @@
             bgm.src = `music/${nextTrack}`;
             bgm.load();
             bgm.play().catch(() => {});
+        }
+
+        function renderCellObject(x, y, layer, cellElement = null) {
+            if (!layer) return;
+            layer.innerHTML = '';
+            const cell = cellElement || document.getElementById(`obj-${x}-${y}`).parentElement;
+            const lvl = customLevels[currentLevelIndex];
+            
+            // 檢查是否在垃圾島周圍 1 格內
+            const isNearTrash = lvl.trashIslands && lvl.trashIslands.some(t => Math.abs(t.x - x) <= 1 && Math.abs(t.y - y) <= 1);
+            if (cell) {
+                if (isNearTrash) {
+                    cell.classList.add('stinky-aura');
+                } else {
+                    cell.classList.remove('stinky-aura');
+                }
+
+                // 檢查是否在鯊魚軌跡內
+                const containingShark = activeSharks && activeSharks.find(s => {
+                    const minX = Math.min(s.x1, s.x2);
+                    const maxX = Math.max(s.x1, s.x2);
+                    const minY = Math.min(s.y1, s.y2);
+                    const maxY = Math.max(s.y1, s.y2);
+                    return x >= minX && x <= maxX && y >= minY && y <= maxY;
+                });
+                if (containingShark) {
+                    cell.classList.add('shark-track');
+                } else {
+                    cell.classList.remove('shark-track');
+                }
+            }
+
+            if (x === startPos.x && y === startPos.y) {
+                layer.innerHTML = '<span class="text-2xl drop-shadow-sm">🚩</span>';
+            } else if (x === endPos.x && y === endPos.y) {
+                layer.innerHTML = '<span class="text-2xl drop-shadow-sm">💰</span>';
+                if (cell) cell.classList.add('bg-yellow-400/10');
+            } else if (lvl.keyPos && x === lvl.keyPos.x && y === lvl.keyPos.y) {
+                layer.innerHTML = `<span id="key-obj" class="text-2xl ${hasKey ? 'opacity-30' : ''}">🔑</span>`;
+                if (cell) cell.classList.add('bg-amber-400/10');
+            } else if (lvl.obstacles.some(o => o.x === x && o.y === y)) {
+                layer.innerHTML = '<span class="text-xl">🪨</span>';
+            } else if (lvl.trashIslands && lvl.trashIslands.some(t => t.x === x && t.y === y)) {
+                layer.innerHTML = '<img src="images/rubbish.svg" class="w-10 h-10 object-contain trash-island floating" alt="垃圾島">';
+            } else if (activeDriftwoods.some(d => d.x === x && d.y === y)) {
+                const delay = ((x + y) * 0.4 % 3).toFixed(1);
+                layer.innerHTML = `<span class="text-2xl floating" style="animation-delay: -${delay}s">🪵</span>`;
+            } else if (lvl.portals) {
+                const p = lvl.portals.find(p => p.x === x && p.y === y);
+                if (p) {
+                    layer.innerHTML = `<span class="text-2xl">🟣</span>`;
+                } else {
+                    const shark = activeSharks && activeSharks.find(s => s.curX === x && s.curY === y);
+                    if (shark) {
+                        layer.innerHTML = '<img src="images/shark.svg" class="w-10 h-10 object-contain shark-entity floating" alt="鯊魚">';
+                    }
+                }
+            } else {
+                const shark = activeSharks && activeSharks.find(s => s.curX === x && s.curY === y);
+                if (shark) {
+                    layer.innerHTML = '<img src="images/shark.svg" class="w-10 h-10 object-contain shark-entity floating" alt="鯊魚">';
+                }
+            }
+        }
+
+        function initBoard() {
+            const board = document.getElementById('game-board');
+            const lvl = customLevels[currentLevelIndex];
+            startPos = lvl.startPos || { x: 4, y: 8 };
+            endPos = lvl.endPos || { x: 4, y: 0 };
+            board.innerHTML = '';
+            activeDriftwoods = JSON.parse(JSON.stringify(lvl.driftwoods || []));
+            activeSharks = JSON.parse(JSON.stringify(lvl.sharks || []));
+
+            for (let y = 0; y < GRID_SIZE; y++) {
+                for (let x = 0; x < GRID_SIZE; x++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'grid-cell';
+                    if (x === startPos.x && y === startPos.y) cell.classList.add('bg-green-500/20');
+                    
+                    const objLayer = document.createElement('div');
+                    objLayer.className = 'cell-object';
+                    objLayer.id = `obj-${x}-${y}`;
+                    
+                    renderCellObject(x, y, objLayer, cell);
+                    
+                    cell.appendChild(objLayer);
+                    board.appendChild(cell);
+                }
+            }
+            updateShipPosition();
         }
 
         function toggleMusic() {
@@ -753,45 +881,6 @@
             location.href = 'index.html';
         }
 
-        function initBoard() {
-            const board = document.getElementById('game-board');
-            const lvl = customLevels[currentLevelIndex];
-            startPos = lvl.startPos || { x: 4, y: 8 };
-            endPos = lvl.endPos || { x: 4, y: 0 };
-            board.innerHTML = '';
-            activeDriftwoods = JSON.parse(JSON.stringify(lvl.driftwoods || []));
-            for (let y = 0; y < GRID_SIZE; y++) {
-                for (let x = 0; x < GRID_SIZE; x++) {
-                    const cell = document.createElement('div');
-                    cell.className = 'grid-cell';
-                    if (x === startPos.x && y === startPos.y) cell.classList.add('bg-green-500/20');
-                    const objLayer = document.createElement('div');
-                    objLayer.className = 'cell-object';
-                    objLayer.id = `obj-${x}-${y}`;
-                    if (x === startPos.x && y === startPos.y) {
-                        objLayer.innerHTML = '<span class="text-2xl drop-shadow-md">🚩</span>';
-                    } else if (x === endPos.x && y === endPos.y) {
-                        objLayer.innerHTML = '<span class="text-2xl drop-shadow-md">💰</span>';
-                        cell.classList.add('bg-yellow-400/10');
-                    } else if (lvl.keyPos && x === lvl.keyPos.x && y === lvl.keyPos.y) {
-                        objLayer.innerHTML = `<span id="key-obj" class="text-2xl ${hasKey ? 'opacity-30' : ''}">🔑</span>`;
-                        cell.classList.add('bg-amber-400/10');
-                    } else if (lvl.obstacles.some(o => o.x === x && o.y === y)) {
-                        objLayer.innerHTML = '<span class="text-xl">🪨</span>';
-                    } else if (activeDriftwoods.some(d => d.x === x && d.y === y)) {
-                        const delay = ((x + y) * 0.4 % 3).toFixed(1);
-                        objLayer.innerHTML = `<span class="text-2xl floating" style="animation-delay: -${delay}s">🪵</span>`;
-                    } else if (lvl.portals) {
-                        const p = lvl.portals.find(p => p.x === x && p.y === y);
-                        if (p) objLayer.innerHTML = `<span class="text-2xl">🟣</span>`;
-                    }
-                    cell.appendChild(objLayer);
-                    board.appendChild(cell);
-                }
-            }
-            updateShipPosition();
-        }
-
         function switchLevel(index) {
             if (isRunning) return;
             if (index > unlockedLevel) {
@@ -807,7 +896,7 @@
             shipState = { x: startPos.x, y: startPos.y, dir: 0 };
             document.querySelectorAll('.lvl-btn').forEach((btn, idx) => {
                 const isLocked = idx > unlockedLevel;
-                btn.innerHTML = `第${['一', '二', '三', '四', '五', '六', '七'][idx]}關${isLocked ? ' 🔒' : ''}`;
+                btn.innerHTML = `第${['一', '二', '三', '四', '五', '六', '七', '八', '九'][idx]}關${isLocked ? ' 🔒' : ''}`;
                 // 必須在同一行設定 className，避免覆蓋 lvl-locked
                 if (isLocked) {
                     btn.className = `lvl-btn lvl-locked px-3 py-1 rounded-full text-xs font-bold transition bg-gray-100 text-gray-400`;
@@ -840,7 +929,7 @@
 
         function updateCardLimits() {
             const lvl = customLevels[currentLevelIndex];
-            const types = ['forward', 'backward', 'left', 'right', 'shoot', 'repeat_2', 'repeat_3', 'repeat_custom'];
+            const types = ['forward', 'backward', 'left', 'right', 'shoot', 'wait', 'repeat_2', 'repeat_3', 'repeat_custom'];
             let showAnyRepeat = false;
 
             types.forEach(type => {
@@ -1136,9 +1225,9 @@
                         i = renderRecursive(track, i + 1, cmd.wrap, depth + 1, body);
                     } else {
                         const item = document.createElement('div');
-                        const cmdIcons = { 'forward': '⬆️', 'backward': '⬇️', 'left': '↪️', 'right': '↩️', 'shoot': '🎯' };
-                        const cmdNames = { 'forward': '前進', 'backward': '後退', 'left': '左轉', 'right': '右轉', 'shoot': '射擊' };
-                        const cmdColors = { 'forward': 'bg-blue-600', 'backward': 'bg-blue-600', 'left': 'bg-indigo-600', 'right': 'bg-indigo-600', 'shoot': 'bg-red-600' };
+                        const cmdIcons = { 'forward': '⬆️', 'backward': '⬇️', 'left': '↪️', 'right': '↩️', 'shoot': '🎯', 'wait': '⏳' };
+                        const cmdNames = { 'forward': '前進', 'backward': '後退', 'left': '左轉', 'right': '右轉', 'shoot': '射擊', 'wait': '等待' };
+                        const cmdColors = { 'forward': 'bg-blue-600', 'backward': 'bg-blue-600', 'left': 'bg-indigo-600', 'right': 'bg-indigo-600', 'shoot': 'bg-red-600', 'wait': 'bg-slate-600' };
                         
                         item.className = `command-card ${cmdColors[cmd.type]}`;
                         item.id = `program-item-${i}`;
@@ -1315,12 +1404,19 @@
                         });
                     }
 
-                    if (step.commandType === 'shoot') { await performShoot(); } 
-                    else {
+                    // Record old positions
+                    const oldShipPos = { x: shipState.x, y: shipState.y };
+                    const oldSharkPositions = activeSharks.map(s => ({ id: s.id, x: s.curX, y: s.curY }));
+
+                    let res = 'ok';
+                    if (step.commandType === 'shoot') {
+                        await performShoot();
+                    } else {
                         if (step.commandType === 'left') await playAudio('turn-left.mp3');
                         else if (step.commandType === 'right') await playAudio('turn-right.mp3');
+                        else if (step.commandType === 'wait') playSfx(250);
                         
-                        const res = moveShip(step.commandType);
+                        res = moveShip(step.commandType);
                         updateShipPosition();
                         
                         if (step.commandType === 'forward' || step.commandType === 'backward') playSfx(res === 'ok' ? 300 : 400);
@@ -1337,15 +1433,24 @@
                             firstReachInfo = { stepIndex: commandStepIndex };
                         }
 
-                        await sleep(600);
-                        if (stopExecution) break;
-
-                        if (res === 'hit' || res === 'out') {
+                        if (res === 'hit' || res === 'out' || res === 'stinky') {
                             playSfx(100, 'sawtooth', 0.5, 0.1);
-                            let failTitle = '💥 航行失敗', failMsg = res === 'hit' ? '撞上礁石沉船了！' : '船隻駛出了邊界！';
+                            let failTitle = '💥 航行失敗', failMsg = '';
+                            if (res === 'hit') failMsg = '撞上礁石沉船了！';
+                            else if (res === 'out') failMsg = '船隻駛出了邊界！';
+                            else if (res === 'stinky') {
+                                failTitle = '🤢 臭氣熏天';
+                                failMsg = '靠近了垃圾島範圍 1 格內，被臭死了！🤮';
+                                const shipEntity = document.getElementById('ship-entity');
+                                if (shipEntity) {
+                                    shipEntity.innerText = '🤮';
+                                    shipEntity.classList.add('animate-bounce');
+                                }
+                            }
                             if (reachedTreasureMidway) {
                                 failTitle = '⚓ 指令過多';
-                                failMsg = `你在執行到展開後第 ${firstReachInfo.stepIndex} 步時就抵達過終點了，指令設定太多囉！\n後續動作讓船隻` + (res === 'hit' ? '撞上了礁石！' : '駛出了邊界！');
+                                failMsg = `你在執行到展開後第 ${firstReachInfo.stepIndex} 步時就抵達過終點了，指令設定太多囉！\n後續動作讓船隻` + 
+                                    (res === 'hit' ? '撞上了礁石！' : (res === 'out' ? '駛出了邊界！' : '靠近了垃圾島！'));
                             }
                             showModal(failTitle, failMsg, '❌', '重新規劃', false);
                             winStatus = 'fail'; break;
@@ -1366,6 +1471,34 @@
                             }
                         }
                     }
+
+                    // Move sharks
+                    moveSharks();
+
+                    // Simultaneous shark collision check
+                    const hasCollision = activeSharks.some(s => {
+                        const oldShark = oldSharkPositions.find(os => os.id === s.id);
+                        if (!oldShark) return false;
+                        const landOnSame = (shipState.x === s.curX && shipState.y === s.curY);
+                        const swapCells = (shipState.x === oldShark.x && shipState.y === oldShark.y && oldShipPos.x === s.curX && oldShipPos.y === s.curY);
+                        return landOnSame || swapCells;
+                    });
+
+                    if (hasCollision) {
+                        winStatus = 'fail';
+                        let failTitle = '🦈 鯊魚襲擊', failMsg = '被鯊魚咬碎了！🦈';
+                        if (reachedTreasureMidway) {
+                            failTitle = '⚓ 指令過多';
+                            failMsg = `你在執行到展開後第 ${firstReachInfo.stepIndex} 步時就抵達過終點了，指令設定太多囉！\n後續動作讓船隻被鯊魚咬碎了！🦈`;
+                        }
+                        showModal(failTitle, failMsg, '❌', '重新規劃');
+                        const shipEntity = document.getElementById('ship-entity');
+                        if (shipEntity) shipEntity.innerText = '💥';
+                        break;
+                    }
+
+                    await sleep(600);
+                    if (stopExecution) break;
                     if (winStatus) break;
                 }
             }
@@ -1415,14 +1548,48 @@
         function moveShip(type) {
             let { x, y, dir } = shipState;
             const lvl = customLevels[currentLevelIndex];
+            if (type === 'wait') return 'ok';
             if (type === 'left') { dir = (dir + 3) % 4; shipState.dir = dir; return 'rotate'; }
             if (type === 'right') { dir = (dir + 1) % 4; shipState.dir = dir; return 'rotate'; }
             if (type === 'forward') { if (dir === 0) y--; else if (dir === 1) x++; else if (dir === 2) y++; else if (dir === 3) x--; }
             else if (type === 'backward') { if (dir === 0) y++; else if (dir === 1) x--; else if (dir === 2) y--; else if (dir === 3) x++; }
             if (x < 0 || x >= GRID_SIZE || y < 0 || y >= GRID_SIZE) return 'out';
             if (lvl.obstacles.some(o => o.x === x && o.y === y)) return 'hit';
+            if (lvl.trashIslands && lvl.trashIslands.some(t => Math.abs(t.x - x) <= 1 && Math.abs(t.y - y) <= 1)) {
+                shipState = { x, y, dir };
+                return 'stinky';
+            }
             shipState = { x, y, dir };
             return 'ok';
+        }
+
+        function checkSharkCollision() {
+            if (!activeSharks) return false;
+            return activeSharks.some(s => s.curX === shipState.x && s.curY === shipState.y);
+        }
+
+        function moveSharks() {
+            if (!activeSharks) return;
+            activeSharks.forEach(s => {
+                const dx = Math.sign(s.x2 - s.x1);
+                const dy = Math.sign(s.y2 - s.y1);
+                const oldX = s.curX;
+                const oldY = s.curY;
+                
+                s.curX += dx * s.direction;
+                s.curY += dy * s.direction;
+                
+                if (s.curX === s.x2 && s.curY === s.y2) {
+                    s.direction = -1;
+                } else if (s.curX === s.x1 && s.curY === s.y1) {
+                    s.direction = 1;
+                }
+
+                const oldObj = document.getElementById(`obj-${oldX}-${oldY}`);
+                const newObj = document.getElementById(`obj-${s.curX}-${s.curY}`);
+                if (oldObj) renderCellObject(oldX, oldY, oldObj);
+                if (newObj) renderCellObject(s.curX, s.curY, newObj);
+            });
         }
 
         function launchCelebration() {
@@ -1522,9 +1689,9 @@
         //  進度代碼 功能
         // ============================================================
 
-        const CMD_SHORT = { forward:'F', backward:'B', left:'L', right:'R', shoot:'S', repeat_2:'R2', repeat_3:'R3', repeat_custom:'RN' };
-        const CMD_LONG  = { F:'forward', B:'backward', L:'left', R:'right', S:'shoot', R2:'repeat_2', R3:'repeat_3' };
-        const LEVEL_NAMES = ['一','二','三','四','五','六','七'];
+        const CMD_SHORT = { forward:'F', backward:'B', left:'L', right:'R', shoot:'S', wait:'W', repeat_2:'R2', repeat_3:'R3', repeat_custom:'RN' };
+        const CMD_LONG  = { F:'forward', B:'backward', L:'left', R:'right', S:'shoot', W:'wait', R2:'repeat_2', R3:'repeat_3' };
+        const LEVEL_NAMES = ['一','二','三','四','五','六','七','八','九'];
 
         /** 將 program 陣列序列化為精簡字串，如 "F,L,R2,F,B" */
         function serializeProgram(prog) {
@@ -1707,7 +1874,7 @@
         function renderPcLevelSummary() {
             const container = document.getElementById('pc-level-summary');
             container.innerHTML = '';
-            const cmdIcon = { forward:'⬆️', backward:'⬇️', left:'↪️', right:'↩️', shoot:'🎯', repeat_2:'🔁x2', repeat_3:'🔁x3', repeat_custom:'🔁x自訂' };
+            const cmdIcon = { forward:'⬆️', backward:'⬇️', left:'↪️', right:'↩️', shoot:'🎯', wait:'⏳', repeat_2:'🔁x2', repeat_3:'🔁x3', repeat_custom:'🔁x自訂' };
             customLevels.forEach((lvl, i) => {
                 const prog = levelPrograms[i];
                 const row = document.createElement('div');

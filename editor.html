@@ -76,6 +76,30 @@
             0%, 100% { transform: translateY(0px); }
             50% { transform: translateY(-4px); }
         }
+
+        .stinky-aura {
+            background-color: rgba(34, 197, 94, 0.15) !important;
+            box-shadow: inset 0 0 10px rgba(34, 197, 94, 0.35) !important;
+        }
+        .stinky-aura::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle, rgba(134, 239, 172, 0.3) 0%, transparent 80%);
+            pointer-events: none;
+            z-index: 1;
+            animation: stinky-fog 2s ease-in-out infinite;
+        }
+        @keyframes stinky-fog {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 0.7; }
+        }
+        
+        .shark-track {
+            background-color: rgba(239, 68, 68, 0.08) !important;
+            box-shadow: inset 0 0 8px rgba(239, 68, 68, 0.15) !important;
+            border: 1px dashed rgba(239, 68, 68, 0.3) !important;
+        }
     </style>
 </head>
 
@@ -153,6 +177,14 @@
                         <span class="text-xl">🔑</span>
                         <span class="text-[10px] mt-1 font-bold">金鑰</span>
                     </button>
+                    <button onclick="selectTool('trash')" id="tool-trash" class="tool-btn flex flex-col items-center p-2 bg-slate-50 rounded-xl text-slate-700">
+                        <img src="images/rubbish.svg" class="w-5 h-5 object-contain" alt="垃圾島">
+                        <span class="text-[10px] mt-1 font-bold">垃圾島</span>
+                    </button>
+                    <button onclick="selectTool('shark')" id="tool-shark" class="tool-btn flex flex-col items-center p-2 bg-slate-50 rounded-xl text-slate-700">
+                        <img src="images/shark.svg" class="w-5 h-5 object-contain" alt="鯊魚">
+                        <span class="text-[10px] mt-1 font-bold">鯊魚</span>
+                    </button>
                     <button onclick="selectTool('eraser')" id="tool-eraser" class="tool-btn flex flex-col items-center p-2 bg-slate-50 rounded-xl text-slate-700 col-span-2">
                         <span class="text-xl">🧹</span>
                         <span class="text-[10px] mt-1 font-bold">橡皮擦</span>
@@ -164,7 +196,8 @@
                 <p id="tool-hint" class="text-[10px] text-slate-400 leading-tight">
                     * 點擊地圖放置物件<br>
                     * 傳送門必須成對出現 (每色最多2個)<br>
-                    * 浮木可被射擊摧毀，鑰匙只能有一個
+                    * 浮木可被射擊摧毀，鑰匙只能有一個<br>
+                    * 鯊魚：點擊起點再點擊同一直線上空格設定來回移動範圍，路徑中不可有其他地形
                 </p>
             </div>
         </aside>
@@ -236,6 +269,14 @@
                             <span class="text-xs text-slate-600 font-bold">🎯 射擊</span>
                         </div>
                         <input type="number" id="limit-shoot" value="0" min="0" onchange="updateLimits()" class="w-16 px-2 py-0.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-center">
+                    </div>
+                    <!-- 等待 -->
+                    <div class="flex items-center justify-between gap-1 py-0.5">
+                        <div class="flex items-center gap-1.5">
+                            <input type="checkbox" id="enable-wait" onchange="updateLimits()" class="w-4 h-4 text-sky-600 border-slate-300 rounded focus:ring-sky-500" checked>
+                            <span class="text-xs text-slate-600 font-bold">⏳ 等待</span>
+                        </div>
+                        <input type="number" id="limit-wait" value="0" min="0" onchange="updateLimits()" class="w-16 px-2 py-0.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-center">
                     </div>
                     
                     <div class="py-1 border-t border-slate-100 my-1"></div>
@@ -314,15 +355,18 @@
     <script>
         let gridSize = 9;
         let selectedTool = 'start';
+        let sharkPendingStart = null;
         let mapData = {
             size: 9,
             startPos: { x: 4, y: 8 },
             endPos: { x: 4, y: 0 },
             obstacles: [],
             driftwoods: [],
+            trashIslands: [],
+            sharks: [],
             portals: [], // {x, y, color}
             keyPos: null,
-            limits: { forward: 0, backward: 0, left: 0, right: 0, shoot: 0, repeat_2: 0, repeat_3: 0, repeat_custom: 0 },
+            limits: { forward: 0, backward: 0, left: 0, right: 0, shoot: 0, wait: 0, repeat_2: 0, repeat_3: 0, repeat_custom: 0 },
             showRepeat: true,
             name: "",
             desc: ""
@@ -330,7 +374,7 @@
         let savedMaps = JSON.parse(localStorage.getItem('pirate_saved_maps')) || [];
 
         function updateLimits() {
-            const types = ['forward', 'backward', 'left', 'right', 'shoot', 'repeat_2', 'repeat_3', 'repeat_custom'];
+            const types = ['forward', 'backward', 'left', 'right', 'shoot', 'wait', 'repeat_2', 'repeat_3', 'repeat_custom'];
             mapData.limits = {};
             types.forEach(type => {
                 const enabled = document.getElementById(`enable-${type}`).checked;
@@ -374,10 +418,16 @@
             renderPortalLines();
 
             // 同步 UI 狀態
-            if (!mapData.limits) {
-                mapData.limits = { forward: 0, backward: 0, left: 0, right: 0, shoot: 0, repeat_2: 0, repeat_3: 0, repeat_custom: 0 };
+            if (!mapData.trashIslands) {
+                mapData.trashIslands = [];
             }
-            const types = ['forward', 'backward', 'left', 'right', 'shoot', 'repeat_2', 'repeat_3', 'repeat_custom'];
+            if (!mapData.sharks) {
+                mapData.sharks = [];
+            }
+            if (!mapData.limits) {
+                mapData.limits = { forward: 0, backward: 0, left: 0, right: 0, shoot: 0, wait: 0, repeat_2: 0, repeat_3: 0, repeat_custom: 0 };
+            }
+            const types = ['forward', 'backward', 'left', 'right', 'shoot', 'wait', 'repeat_2', 'repeat_3', 'repeat_custom'];
             types.forEach(type => {
                 let limit = mapData.limits[type];
                 
@@ -404,15 +454,50 @@
             });
         }
 
+        function hasOtherTerrain(x, y) {
+            if (mapData.startPos && mapData.startPos.x === x && mapData.startPos.y === y) return true;
+            if (mapData.endPos && mapData.endPos.x === x && mapData.endPos.y === y) return true;
+            if (mapData.obstacles && mapData.obstacles.some(o => o.x === x && o.y === y)) return true;
+            if (mapData.driftwoods && mapData.driftwoods.some(d => d.x === x && d.y === y)) return true;
+            if (mapData.trashIslands && mapData.trashIslands.some(t => t.x === x && t.y === y)) return true;
+            if (mapData.keyPos && mapData.keyPos.x === x && mapData.keyPos.y === y) return true;
+            if (mapData.portals && mapData.portals.some(p => p.x === x && p.y === y)) return true;
+            return false;
+        }
+
         function renderCellContent(cell, x, y) {
             cell.innerHTML = '';
             
+            // 檢查是否在垃圾島周圍 1 格內
+            const isNearTrash = mapData.trashIslands && mapData.trashIslands.some(t => Math.abs(t.x - x) <= 1 && Math.abs(t.y - y) <= 1);
+            if (isNearTrash) {
+                cell.classList.add('stinky-aura');
+            } else {
+                cell.classList.remove('stinky-aura');
+            }
+
+            // 檢查是否在鯊魚軌跡內
+            const containingShark = mapData.sharks && mapData.sharks.find(s => {
+                const minX = Math.min(s.x1, s.x2);
+                const maxX = Math.max(s.x1, s.x2);
+                const minY = Math.min(s.y1, s.y2);
+                const maxY = Math.max(s.y1, s.y2);
+                return x >= minX && x <= maxX && y >= minY && y <= maxY;
+            });
+            if (containingShark) {
+                cell.classList.add('shark-track');
+            } else {
+                cell.classList.remove('shark-track');
+            }
+
             if (mapData.startPos && mapData.startPos.x === x && mapData.startPos.y === y) {
                 cell.innerHTML = '<span class="text-2xl drop-shadow-sm">🚩</span>';
             } else if (mapData.endPos && mapData.endPos.x === x && mapData.endPos.y === y) {
                 cell.innerHTML = '<span class="text-2xl drop-shadow-sm">💰</span>';
             } else if (mapData.obstacles.some(o => o.x === x && o.y === y)) {
                 cell.innerHTML = '<span class="text-2xl">🪨</span>';
+            } else if (mapData.trashIslands && mapData.trashIslands.some(t => t.x === x && t.y === y)) {
+                cell.innerHTML = '<img src="images/rubbish.svg" class="w-10 h-10 object-contain trash-island floating" alt="垃圾島">';
             } else if (mapData.driftwoods && mapData.driftwoods.some(d => d.x === x && d.y === y)) {
                 const delay = ((x + y) * 0.4 % 3).toFixed(1);
                 cell.innerHTML = `<span class="text-2xl floating" style="animation-delay: -${delay}s">🪵</span>`;
@@ -423,12 +508,20 @@
                 if (portal) {
                     const icons = { 'purple': '🟣', 'green': '🟢', 'blue': '🔵' };
                     cell.innerHTML = `<span class="text-2xl">${icons[portal.color]}</span>`;
+                } else {
+                    const isSharkStart = mapData.sharks && mapData.sharks.some(s => s.x1 === x && s.y1 === y);
+                    const isPendingShark = sharkPendingStart && sharkPendingStart.x === x && sharkPendingStart.y === y;
+                    if (isSharkStart) {
+                        cell.innerHTML = '<img src="images/shark.svg" class="w-10 h-10 object-contain shark-entity floating" alt="鯊魚">';
+                    } else if (isPendingShark) {
+                        cell.innerHTML = '<img src="images/shark.svg" class="w-10 h-10 object-contain shark-entity floating" style="opacity: 0.5" alt="鯊魚">';
+                    }
                 }
             }
         }
 
         function handleCellClick(x, y) {
-            if (selectedTool !== 'eraser') {
+            if (selectedTool !== 'eraser' && !(selectedTool === 'shark' && sharkPendingStart)) {
                 removeFromMap(x, y);
             }
 
@@ -446,6 +539,10 @@
                     if (!mapData.driftwoods) mapData.driftwoods = [];
                     mapData.driftwoods.push({ x, y });
                     break;
+                case 'trash':
+                    if (!mapData.trashIslands) mapData.trashIslands = [];
+                    mapData.trashIslands.push({ x, y });
+                    break;
                 case 'key':
                     mapData.keyPos = { x, y };
                     break;
@@ -455,11 +552,88 @@
                     const color = selectedTool.split('-')[1] === 'p' ? 'purple' : (selectedTool.split('-')[1] === 'g' ? 'green' : 'blue');
                     const existingColorPortals = mapData.portals.filter(p => p.color === color);
                     if (existingColorPortals.length >= 2) {
-                        // 移除最早的一個
                         const first = existingColorPortals[0];
                         mapData.portals = mapData.portals.filter(p => !(p.x === first.x && p.y === first.y));
                     }
                     mapData.portals.push({ x, y, color });
+                    break;
+                case 'shark':
+                    if (!sharkPendingStart) {
+                        if (hasOtherTerrain(x, y) || (mapData.sharks && mapData.sharks.some(s => {
+                            const minX = Math.min(s.x1, s.x2);
+                            const maxX = Math.max(s.x1, s.x2);
+                            const minY = Math.min(s.y1, s.y2);
+                            const maxY = Math.max(s.y1, s.y2);
+                            return x >= minX && x <= maxX && y >= minY && y <= maxY;
+                        }))) {
+                            showToast('此格子已有其他地形或鯊魚路徑，不可放置鯊魚起點！', '❌');
+                            return;
+                        }
+                        sharkPendingStart = { x, y };
+                        showToast('已選定起點，請點擊同一直線上空格設定終點', '🦈');
+                    } else {
+                        const x1 = sharkPendingStart.x;
+                        const y1 = sharkPendingStart.y;
+                        const x2 = x;
+                        const y2 = y;
+                        
+                        if (x1 === x2 && y1 === y2) {
+                            sharkPendingStart = null;
+                            showToast('已取消設定鯊魚路徑', 'ℹ️');
+                            refreshAllCells();
+                            return;
+                        }
+                        
+                        if (x1 !== x2 && y1 !== y2) {
+                            showToast('無效範圍：路徑必須是直線（同一列或同一行）！', '❌');
+                            return;
+                        }
+                        
+                        const minX = Math.min(x1, x2);
+                        const maxX = Math.max(x1, x2);
+                        const minY = Math.min(y1, y2);
+                        const maxY = Math.max(y1, y2);
+                        
+                        let hasObstruction = false;
+                        for (let cx = minX; cx <= maxX; cx++) {
+                            for (let cy = minY; cy <= maxY; cy++) {
+                                if (hasOtherTerrain(cx, cy)) {
+                                    hasObstruction = true;
+                                    break;
+                                }
+                                if (mapData.sharks && mapData.sharks.some(s => {
+                                    const sMinX = Math.min(s.x1, s.x2);
+                                    const sMaxX = Math.max(s.x1, s.x2);
+                                    const sMinY = Math.min(s.y1, s.y2);
+                                    const sMaxY = Math.max(s.y1, s.y2);
+                                    return cx >= sMinX && cx <= sMaxX && cy >= sMinY && cy <= sMaxY;
+                                })) {
+                                    hasObstruction = true;
+                                    break;
+                                }
+                            }
+                            if (hasObstruction) break;
+                        }
+                        
+                        if (hasObstruction) {
+                            showToast('直線路徑中不可有其他地形或鯊魚路徑！', '❌');
+                            return;
+                        }
+                        
+                        if (!mapData.sharks) mapData.sharks = [];
+                        mapData.sharks.push({
+                            id: Date.now(),
+                            x1: x1,
+                            y1: y1,
+                            x2: x2,
+                            y2: y2,
+                            curX: x1,
+                            curY: y1,
+                            direction: 1
+                        });
+                        sharkPendingStart = null;
+                        showToast('成功建立鯊魚巡邏路線！', '✅');
+                    }
                     break;
                 case 'eraser':
                     removeFromMap(x, y);
@@ -474,9 +648,20 @@
             
             mapData.obstacles = mapData.obstacles.filter(o => !(o.x === x && o.y === y));
             if (mapData.driftwoods) mapData.driftwoods = mapData.driftwoods.filter(d => !(d.x === x && d.y === y));
+            if (mapData.trashIslands) mapData.trashIslands = mapData.trashIslands.filter(t => !(t.x === x && t.y === y));
             mapData.portals = mapData.portals.filter(p => !(p.x === x && p.y === y));
             
             if (mapData.keyPos && mapData.keyPos.x === x && mapData.keyPos.y === y) mapData.keyPos = null;
+
+            if (mapData.sharks) {
+                mapData.sharks = mapData.sharks.filter(s => {
+                    const minX = Math.min(s.x1, s.x2);
+                    const maxX = Math.max(s.x1, s.x2);
+                    const minY = Math.min(s.y1, s.y2);
+                    const maxY = Math.max(s.y1, s.y2);
+                    return !(x >= minX && x <= maxX && y >= minY && y <= maxY);
+                });
+            }
         }
 
         function refreshAllCells() {
@@ -546,6 +731,9 @@
             if (mapData.startPos && (mapData.startPos.x >= gridSize || mapData.startPos.y >= gridSize)) mapData.startPos = { x: 0, y: gridSize - 1 };
             if (mapData.endPos && (mapData.endPos.x >= gridSize || mapData.endPos.y >= gridSize)) mapData.endPos = { x: gridSize - 1, y: 0 };
             mapData.obstacles = mapData.obstacles.filter(o => o.x < gridSize && o.y < gridSize);
+            if (mapData.driftwoods) mapData.driftwoods = mapData.driftwoods.filter(d => d.x < gridSize && d.y < gridSize);
+            if (mapData.trashIslands) mapData.trashIslands = mapData.trashIslands.filter(t => t.x < gridSize && t.y < gridSize);
+            if (mapData.sharks) mapData.sharks = mapData.sharks.filter(s => s.x1 < gridSize && s.y1 < gridSize && s.x2 < gridSize && s.y2 < gridSize);
             mapData.portals = mapData.portals.filter(p => p.x < gridSize && p.y < gridSize && p.targetX < gridSize && p.targetY < gridSize);
             if (mapData.keyPos && (mapData.keyPos.x >= gridSize || mapData.keyPos.y >= gridSize)) mapData.keyPos = null;
             
@@ -555,6 +743,7 @@
         function selectTool(tool) {
             selectedTool = tool;
             portalPending = null;
+            sharkPendingStart = null;
             document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById(`tool-${tool}`).classList.add('active');
             refreshAllCells();
@@ -596,7 +785,13 @@
                     if (data && data.size) {
                         mapData = data;
                         // 確保相容性
-                        if (!mapData.limits) mapData.limits = { forward: 0, backward: 0, left: 0, right: 0, shoot: 0, repeat_2: 0, repeat_3: 0, repeat_custom: 0 };
+                        if (!mapData.trashIslands) mapData.trashIslands = [];
+                        if (!mapData.sharks) mapData.sharks = [];
+                        if (!mapData.limits) {
+                            mapData.limits = { forward: 0, backward: 0, left: 0, right: 0, shoot: 0, wait: 0, repeat_2: 0, repeat_3: 0, repeat_custom: 0 };
+                        } else if (mapData.limits.wait === undefined) {
+                            mapData.limits.wait = 0;
+                        }
                         if (mapData.showRepeat === undefined) mapData.showRepeat = true;
                         
                         gridSize = mapData.size || 9;
@@ -626,9 +821,11 @@
                     endPos: { x: gridSize - 1, y: 0 },
                     obstacles: [],
                     driftwoods: [],
+                    trashIslands: [],
+                    sharks: [],
                     portals: [],
                     keyPos: null,
-                    limits: { forward: 0, backward: 0, left: 0, right: 0, shoot: 0, repeat_2: 0, repeat_3: 0, repeat_custom: 0 },
+                    limits: { forward: 0, backward: 0, left: 0, right: 0, shoot: 0, wait: 0, repeat_2: 0, repeat_3: 0, repeat_custom: 0 },
                     showRepeat: true
                 };
                 initEditor();

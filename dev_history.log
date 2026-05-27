@@ -1,0 +1,107 @@
+## [2026-05-27 10:56:00] - 修正船隻與巡邏鯊魚移動時序與碰撞判定機制
+
+*   **使用者提示詞 / 需求 (User Prompt):**
+    > 鯊魚會移動，但是順序市指令執行後船隻移動後，鯊魚才動，會導致在同一個移動回合中，船隻移動碰到鯊魚，鯊魚才動，觸發失敗
+
+*   **實作策略與動機 (Implementation Strategy):**
+    *   在原設計中，船隻移動後立即進行一次碰撞判定，隨後鯊魚移動，又進行一次判定。這會導致船隻移動進鯊魚原先所在的格子，但該鯊魚即將在同一回合移出該格時，船隻被誤判為與鯊魚碰撞。
+    *   為了修復此同步移動時序的衝突，改為「同時移動 (Simultaneous Movement) 判定模型」：
+        1. 在回合開始前，分別記錄船隻與所有巡邏鯊魚的原始位置。
+        2. 執行船隻動作（移動、射擊或等待，包括傳送門的跳躍）。
+        3. 執行鯊魚巡邏移動。
+        4. 執行一次性的「同時碰撞判定」。判定條件為以下兩者之一：
+           - **新格重合**：兩者移動後落在同一個格子（`shipState == shark_new`）。
+           - **交錯互換**：兩者在移動中交錯對調位置（`shipState == shark_old` 且 `ship_old == shark_new`）。
+    *   此修改能有效防範船隻在鯊魚撤離格中被咬碎的誤判，同時保持在窄道迎面交錯時的正確死亡判定。
+
+*   **受影響檔案與變更 (Files Affected & Actions):**
+    *   `[MODIFIED]` `custom.html`: 重構 `runProgram()` 中的指令執行時序，移除中間碰撞判定，改為一次性的同時移動碰撞判定。
+    *   `[MODIFIED]` `adventure.html`: 相同邏輯重構 `runProgram()` 的執行時序與碰撞判定。
+    *   `[MODIFIED]` `dev_history.log`: 追加本條日誌紀錄。
+
+*   **目前狀態 (Current Status):** 已完成 Completed
+
+## [2026-05-27 10:46:00] - [Self-Correction / Bugfix] 移除 adventure.html 中的重複懸空程式碼以修復語法錯誤
+
+*   **使用者提示詞 / 需求 (User Prompt):**
+    > 闖關關卡失效，沒有顯示
+
+*   **實作策略與動機 (Implementation Strategy):**
+    *   在 `adventure.html` 中，`goHome()` 函數下方存在一段無效且懸空的程式碼區塊（為先前編輯殘留的 duplicate snippet）。
+    *   此區塊導致 JavaScript 語法錯誤（SyntaxError），阻礙了整個腳本載入，導致關卡載入與遊戲畫面無法顯示。
+    *   移除該懸空程式碼區塊，恢復指令序列與關卡網格的正常初始化。
+
+*   **受影響檔案與變更 (Files Affected & Actions):**
+    *   `[MODIFIED]` `adventure.html`: 刪除第 883-902 行的懸空無效 snippet。
+    *   `[MODIFIED]` `dev_history.log`: 追加本條修正日誌。
+
+*   **目前狀態 (Current Status):** 已完成 Completed
+
+## [2026-05-27 10:45:00] - 更新 README.md 文件以符合最新功能與關卡
+
+*   **使用者提示詞 / 需求 (User Prompt):**
+    > readme.md內容要與現在所有的功能相符
+
+*   **實作策略與動機 (Implementation Strategy):**
+    *   更新 `README.md`，將關卡數量由 7 關修正為 9 關，並新增「垃圾島與臭氣區」、「巡邏鯊魚」及「等待指令（⏳）」的功能說明與技術特徵。
+    *   在進度代碼說明中補充 `'W'` 代表等待指令。
+    *   在歷史更新紀錄表格中追加 V3.2（新增垃圾島與巡邏鯊魚）與 V3.3（新增等待指令）版本條目，使文件與系統現狀完全吻合。
+
+*   **受影響檔案與變更 (Files Affected & Actions):**
+    *   `[MODIFIED]` `README.md`: 更新關卡說明、邏輯卡片、地圖機制、代碼序列化格式及版本演進表。
+    *   `[MODIFIED]` `dev_history.log`: 追加本條日誌紀錄。
+
+*   **目前狀態 (Current Status):** 已完成 Completed
+
+## [2026-05-27 10:44:00] - 建立變更日誌規範紀錄與初始化
+
+*   **使用者提示詞 / 需求 (User Prompt):**
+    > 目前進行了多次修改，但是沒有紀錄，現在我增加了開發注意事項，請遵照內容建立LOG檔
+
+*   **實作策略與動機 (Implementation Strategy):**
+    *   遵照《開發注意事項.md》的規定，在專案根目錄下初始化建立 `dev_history.log` 檔案。
+    *   回溯記錄本次對話中之前完成的所有修改，包含「垃圾島與鯊魚巡邏機制實作」以及「新增等待 (wait) 指令實作」，以確保歷史紀錄完整性與日誌優先開發的執行。
+
+*   **受影響檔案與變更 (Files Affected & Actions):**
+    *   `[CREATED]` `dev_history.log`: 初始化建立日誌檔案並填入變更歷史紀錄。
+
+*   **目前狀態 (Current Status):** 已完成 Completed
+
+## [2026-05-27 10:35:00] - 新增等待 (Wait) 指令支援
+
+*   **使用者提示詞 / 需求 (User Prompt):**
+    > 移動指令中增加一個等待，讓使用者可以等待一次
+
+*   **實作策略與動機 (Implementation Strategy):**
+    *   在移動指令中新增等待（⏳）指令，玩家執行該指令時，船隻座標不變，原地停留一回合。此時動態的鯊魚仍會移動一格，以便玩家利用時間差避開巡邏鯊魚。
+    *   在編輯器中新增等待指令的上限與啟用控制；同步在自訂挑戰模式及闖關模式中新增對應的 UI 按鈕、執行邏輯與音效。
+    *   為進度代碼加入等待 `'W'` 短碼序列化與反序列化映射，確保前後相容性；同步於教師評分端與遊戲說明頁面支援該指令。
+
+*   **受影響檔案與變更 (Files Affected & Actions):**
+    *   `[MODIFIED]` `editor.html`: limits 結構中新增 `wait: 0` 並提供 UI 限制設定，處理 clear 與 import 的相容性初始化。
+    *   `[MODIFIED]` `custom.html`: 調整網格為 `grid-cols-6`，新增 `btn-wait` 按鈕，並於 `runProgram()` 模擬與 `moveShip()` 回傳 `'ok'` 處理等待邏輯與 ticking 音效。
+    *   `[MODIFIED]` `adventure.html`: 調整網格為 `grid-cols-5`，新增等待按鈕、卡片限制、短碼 `W` 序列化與 `LEVEL_NAMES` 修正。
+    *   `[MODIFIED]` `teacher.html`: `CMD_LONG` 字典新增 `W: 'wait'` 支援解析含有等待指令的學生進度代碼。
+    *   `[MODIFIED]` `tutorial.html`: 命令積木章節新增等待 `⏳` 的詳細功能介紹。
+
+*   **目前狀態 (Current Status):** 已完成 Completed
+
+## [2026-05-27 10:20:00] - 新增垃圾島地形與巡邏鯊魚元素
+
+*   **使用者提示詞 / 需求 (User Prompt):**
+    > 1. 幫增加一個垃圾島的地形，條件式：只要有船隻靠近這個地形範圍1格內，就是失敗，被臭死
+    > 2. 垃圾島的圖使用 images\rubbish.svg
+    > 3. 編輯工具中也要顯示我自訂的垃圾島圖示
+    > 4. 再加入鯊魚地形元素，圖示使用shark.svg，這個地圖要使用者指定直線來回移動的範圍，使用者每執行一個指令，鯊魚就在地圖上移動ㄧ格，要注意直線範圍中不可以有其他地形存在
+
+*   **實作策略與動機 (Implementation Strategy):**
+    *   在網頁中實作「垃圾島」地形。靠近其周圍 1 格（包含斜角）將標記綠色臭氣警戒動畫。進入該區域時判定失敗。
+    *   在網頁中實作「巡邏鯊魚」元素。在編輯器中以兩點選取法設定直線路徑並繪製淡紅虛線軌跡。執行時，鯊魚隨每張指令卡移動一格，並實作雙重碰撞檢查以防 Ghosting。
+    *   在冒險關卡中新增第八關（垃圾島）與第九關（鯊魚海域）展示新元素。
+
+*   **受影響檔案與變更 (Files Affected & Actions):**
+    *   `[MODIFIED]` `editor.html`: 加入垃圾島工具與鯊魚選路徑工具，新增 `.stinky-aura` 與 `.shark-track` 軌跡圖層。
+    *   `[MODIFIED]` `custom.html`: 增加垃圾島與鯊魚動態移動模擬及碰撞判定邏輯。
+    *   `[MODIFIED]` `adventure.html`: 新增垃圾島與鯊魚判定，並擴充第八、九關數據。
+
+*   **目前狀態 (Current Status):** 已完成 Completed

@@ -242,6 +242,31 @@
             0% { transform: scale(0) rotate(-720deg); opacity: 0; }
             100% { transform: scale(1) rotate(0deg); opacity: 1; }
         }
+
+        .stinky-aura {
+            background-color: rgba(34, 197, 94, 0.15) !important;
+            box-shadow: inset 0 0 10px rgba(34, 197, 94, 0.35) !important;
+            position: relative;
+        }
+        .stinky-aura::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle, rgba(134, 239, 172, 0.3) 0%, transparent 80%);
+            pointer-events: none;
+            z-index: 1;
+            animation: stinky-fog 2s ease-in-out infinite;
+        }
+        @keyframes stinky-fog {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 0.7; }
+        }
+
+        .shark-track {
+            background-color: rgba(239, 68, 68, 0.08) !important;
+            box-shadow: inset 0 0 8px rgba(239, 68, 68, 0.15) !important;
+            border: 1px dashed rgba(239, 68, 68, 0.3) !important;
+        }
     </style>
 </head>
 
@@ -284,7 +309,7 @@
                 <h2 class="text-lg font-bold text-gray-700 mb-3 border-b pb-2 flex items-center gap-2">
                     <span>📜 指令卡片</span>
                 </h2>
-                <div class="grid grid-cols-5 gap-2">
+                <div class="grid grid-cols-6 gap-2">
                     <button id="btn-forward" onclick="addCommand('forward')" class="flex flex-col items-center p-2 bg-blue-50 border-2 border-blue-200 rounded-xl text-blue-700 font-bold hover:bg-blue-100 transition active:scale-95 disabled:opacity-50 disabled:grayscale disabled:scale-100">
                         <span class="text-xl">⬆️</span><span class="count-label text-[9px] mt-1 bg-blue-200 px-1.5 rounded-full">∞</span>
                     </button>
@@ -299,6 +324,9 @@
                     </button>
                     <button id="btn-shoot" onclick="addCommand('shoot')" class="flex flex-col items-center p-2 bg-red-50 border-2 border-red-200 rounded-xl text-red-700 font-bold hover:bg-red-100 transition active:scale-95 disabled:opacity-50 disabled:grayscale disabled:scale-100">
                         <span class="text-xl">🎯</span><span class="count-label text-[9px] mt-1 bg-red-200 px-1.5 rounded-full">∞</span>
+                    </button>
+                    <button id="btn-wait" onclick="addCommand('wait')" class="flex flex-col items-center p-2 bg-slate-50 border-2 border-slate-200 rounded-xl text-slate-700 font-bold hover:bg-slate-100 transition active:scale-95 disabled:opacity-50 disabled:grayscale disabled:scale-100">
+                        <span class="text-xl">⏳</span><span class="count-label text-[9px] mt-1 bg-slate-200 px-1.5 rounded-full">∞</span>
                     </button>
                 </div>
 
@@ -376,9 +404,11 @@
 
     <script>
         let mapData = JSON.parse(localStorage.getItem('pirate_custom_map')) || {
-            size: 9, startPos: {x:4, y:8}, endPos: {x:4, y:0}, obstacles: [], driftwoods: [], portals: [], keyPos: null,
-            limits: { forward: 0, backward: 0, left: 0, right: 0, shoot: 0 }, showRepeat: true
+            size: 9, startPos: {x:4, y:8}, endPos: {x:4, y:0}, obstacles: [], driftwoods: [], trashIslands: [], sharks: [], portals: [], keyPos: null,
+            limits: { forward: 0, backward: 0, left: 0, right: 0, shoot: 0, wait: 0 }, showRepeat: true
         };
+        if (!mapData.trashIslands) mapData.trashIslands = [];
+        if (!mapData.sharks) mapData.sharks = [];
 
         let GRID_SIZE = mapData.size;
         let shipIcon = '🚢';
@@ -390,6 +420,7 @@
         let levelStartTime = Date.now();
         let timerInterval = null;
         let activeDriftwoods = [];
+        let activeSharks = [];
         let isMusicOn = false;
 
         const playlist = ['bgm1.mp3', 'bgm2.mp3', 'bgm3.mp3'];
@@ -440,10 +471,9 @@
 
         function playAudio(filename) {
             return new Promise((resolve) => {
-                // 假設音效檔案放在 music 資料夾中
                 const audio = new Audio(`music/${filename}`);
                 audio.onended = resolve;
-                audio.onerror = resolve; // 檔案讀取失敗也繼續執行，避免卡死
+                audio.onerror = resolve; 
                 audio.play().catch(resolve);
             });
         }
@@ -455,6 +485,7 @@
             board.style.gridTemplateColumns = `repeat(${GRID_SIZE}, 1fr)`;
             
             activeDriftwoods = JSON.parse(JSON.stringify(mapData.driftwoods || []));
+            activeSharks = JSON.parse(JSON.stringify(mapData.sharks || []));
 
             for (let y = 0; y < GRID_SIZE; y++) {
                 for (let x = 0; x < GRID_SIZE; x++) {
@@ -482,6 +513,28 @@
             layer.innerHTML = '';
             const cell = cellElement || document.getElementById(`cell-${x}-${y}`);
             
+            const isNearTrash = mapData.trashIslands && mapData.trashIslands.some(t => Math.abs(t.x - x) <= 1 && Math.abs(t.y - y) <= 1);
+            if (cell) {
+                if (isNearTrash) {
+                    cell.classList.add('stinky-aura');
+                } else {
+                    cell.classList.remove('stinky-aura');
+                }
+
+                const containingShark = activeSharks && activeSharks.find(s => {
+                    const minX = Math.min(s.x1, s.x2);
+                    const maxX = Math.max(s.x1, s.x2);
+                    const minY = Math.min(s.y1, s.y2);
+                    const maxY = Math.max(s.y1, s.y2);
+                    return x >= minX && x <= maxX && y >= minY && y <= maxY;
+                });
+                if (containingShark) {
+                    cell.classList.add('shark-track');
+                } else {
+                    cell.classList.remove('shark-track');
+                }
+            }
+
             if (mapData.startPos && x === mapData.startPos.x && y === mapData.startPos.y) {
                 layer.innerHTML = '<span class="text-2xl drop-shadow-md">🚩</span>';
             } else if (x === mapData.endPos.x && y === mapData.endPos.y) {
@@ -491,6 +544,8 @@
                 layer.innerHTML = `<span id="key-obj" class="text-xl ${hasKey ? 'opacity-30' : ''}">🔑</span>`;
             } else if (mapData.obstacles.some(o => o.x === x && o.y === y)) {
                 layer.innerHTML = '<span class="text-xl">🪨</span>';
+            } else if (mapData.trashIslands && mapData.trashIslands.some(t => t.x === x && t.y === y)) {
+                layer.innerHTML = '<img src="images/rubbish.svg" class="w-10 h-10 object-contain trash-island floating" alt="垃圾島">';
             } else if (activeDriftwoods.some(d => d.x === x && d.y === y)) {
                 const delay = ((x + y) * 0.4 % 3).toFixed(1);
                 layer.innerHTML = `<span class="text-xl floating" style="animation-delay: -${delay}s">🪵</span>`;
@@ -499,6 +554,11 @@
                 if (portal) {
                     const icons = { 'purple': '🟣', 'green': '🟢', 'blue': '🔵' };
                     layer.innerHTML = `<span class="text-xl">${icons[portal.color]}</span>`;
+                } else {
+                    const shark = activeSharks && activeSharks.find(s => s.curX === x && s.curY === y);
+                    if (shark) {
+                        layer.innerHTML = '<img src="images/shark.svg" class="w-10 h-10 object-contain shark-entity floating" alt="鯊魚">';
+                    }
                 }
             }
         }
@@ -535,7 +595,8 @@
                         
                         mapData = data;
                         // 確保相容性
-                        if (!mapData.limits) mapData.limits = { forward: 0, backward: 0, left: 0, right: 0, shoot: 0 };
+                        if (!mapData.trashIslands) mapData.trashIslands = [];
+                        if (!mapData.limits) mapData.limits = { forward: 0, backward: 0, left: 0, right: 0, shoot: 0, wait: 0 };
                         if (mapData.showRepeat === undefined) mapData.showRepeat = true;
                         
                         localStorage.setItem('pirate_custom_map', json);
@@ -579,7 +640,8 @@
                 try {
                     mapData = JSON.parse(saved);
                     // 確保相容性
-                    if (!mapData.limits) mapData.limits = { forward: 0, backward: 0, left: 0, right: 0, shoot: 0 };
+                    if (!mapData.trashIslands) mapData.trashIslands = [];
+                    if (!mapData.limits) mapData.limits = { forward: 0, backward: 0, left: 0, right: 0, shoot: 0, wait: 0 };
                     if (mapData.showRepeat === undefined) mapData.showRepeat = true;
                     
                     GRID_SIZE = mapData.size || 9; // 同步網格尺寸
@@ -629,7 +691,7 @@
         }
 
         function updateCardUI() {
-            const types = ['forward', 'backward', 'left', 'right', 'shoot', 'repeat_2', 'repeat_3', 'repeat_custom'];
+            const types = ['forward', 'backward', 'left', 'right', 'shoot', 'wait', 'repeat_2', 'repeat_3', 'repeat_custom'];
             let showAnyRepeat = false;
 
             types.forEach(type => {
@@ -838,9 +900,9 @@
                         i = renderRecursive(track, i + 1, cmd.wrap, depth + 1, body);
                     } else {
                         const item = document.createElement('div');
-                        const cmdIcons = { 'forward': '⬆️', 'backward': '⬇️', 'left': '↪️', 'right': '↩️', 'shoot': '🎯' };
-                        const cmdNames = { 'forward': '前進', 'backward': '後退', 'left': '左轉', 'right': '右轉', 'shoot': '射擊' };
-                        const cmdColors = { 'forward': 'bg-blue-600', 'backward': 'bg-blue-600', 'left': 'bg-indigo-600', 'right': 'bg-indigo-600', 'shoot': 'bg-red-600' };
+                        const cmdIcons = { 'forward': '⬆️', 'backward': '⬇️', 'left': '↪️', 'right': '↩️', 'shoot': '🎯', 'wait': '⏳' };
+                        const cmdNames = { 'forward': '前進', 'backward': '後退', 'left': '左轉', 'right': '右轉', 'shoot': '射擊', 'wait': '等待' };
+                        const cmdColors = { 'forward': 'bg-blue-600', 'backward': 'bg-blue-600', 'left': 'bg-indigo-600', 'right': 'bg-indigo-600', 'shoot': 'bg-red-600', 'wait': 'bg-slate-600' };
                         item.className = `command-card ${cmdColors[cmd.type]}`;
                         item.id = `program-item-${i}`;
                         item.innerHTML = `
@@ -882,6 +944,7 @@
             // 還原漂流木與鑰匙等物件
             hasKey = false;
             activeDriftwoods = JSON.parse(JSON.stringify(mapData.driftwoods || []));
+            activeSharks = JSON.parse(JSON.stringify(mapData.sharks || []));
             for (let y = 0; y < GRID_SIZE; y++) {
                 for (let x = 0; x < GRID_SIZE; x++) {
                     renderCellObject(x, y, document.getElementById(`obj-${x}-${y}`));
@@ -1026,6 +1089,11 @@
                         });
                     }
                     
+                    // Record old positions
+                    const oldShipPos = { x: shipState.x, y: shipState.y };
+                    const oldSharkPositions = activeSharks.map(s => ({ id: s.id, x: s.curX, y: s.curY }));
+
+                    let res = 'ok';
                     if (step.commandType === 'shoot') {
                         await performShoot();
                     } else {
@@ -1033,9 +1101,11 @@
                             await playAudio('turn-left.mp3');
                         } else if (step.commandType === 'right') {
                             await playAudio('turn-right.mp3');
+                        } else if (step.commandType === 'wait') {
+                            playSfx(250);
                         }
 
-                        const res = moveShip(step.commandType);
+                        res = moveShip(step.commandType);
                         updateShipPosition();
                         if (step.commandType === 'forward' || step.commandType === 'backward') {
                             playSfx(res === 'ok' ? 300 : 400);
@@ -1049,12 +1119,21 @@
                             }
                         }
 
-                        await new Promise(r => setTimeout(r, 600));
-                        if (stopExecution) break;
-
-                        if (res === 'hit' || res === 'out') {
+                        if (res === 'hit' || res === 'out' || res === 'stinky') {
                             winStatus = 'fail';
-                            showModal('💥 挑戰失敗', res === 'hit' ? '撞上了障礙物！' : '船隻駛出了邊界！', '❌', '重新規劃');
+                            let failTitle = '💥 挑戰失敗', failMsg = '';
+                            if (res === 'hit') failMsg = '撞上了障礙物！';
+                            else if (res === 'out') failMsg = '船隻駛出了邊界！';
+                            else if (res === 'stinky') {
+                                failTitle = '🤢 臭氣熏天';
+                                failMsg = '靠近了垃圾島範圍 1 格內，被臭死了！🤮';
+                                const shipEntity = document.getElementById('ship-entity');
+                                if (shipEntity) {
+                                    shipEntity.innerText = '🤮';
+                                    shipEntity.classList.add('animate-bounce');
+                                }
+                            }
+                            showModal(failTitle, failMsg, '❌', '重新規劃');
                             break;
                         }
 
@@ -1075,6 +1154,29 @@
                             }
                         }
                     }
+
+                    // Move sharks
+                    moveSharks();
+
+                    // Simultaneous shark collision check
+                    const hasCollision = activeSharks.some(s => {
+                        const oldShark = oldSharkPositions.find(os => os.id === s.id);
+                        if (!oldShark) return false;
+                        const landOnSame = (shipState.x === s.curX && shipState.y === s.curY);
+                        const swapCells = (shipState.x === oldShark.x && shipState.y === oldShark.y && oldShipPos.x === s.curX && oldShipPos.y === s.curY);
+                        return landOnSame || swapCells;
+                    });
+
+                    if (hasCollision) {
+                        winStatus = 'fail';
+                        showModal('🦈 鯊魚襲擊', '被鯊魚咬碎了！🦈', '❌', '重新規劃');
+                        const shipEntity = document.getElementById('ship-entity');
+                        if (shipEntity) shipEntity.innerText = '💥';
+                        break;
+                    }
+
+                    await new Promise(r => setTimeout(r, 600));
+                    if (stopExecution) break;
                     if (winStatus === 'fail') break;
                 }
             }
@@ -1150,6 +1252,7 @@
 
         function moveShip(type) {
             let { x, y, dir } = shipState;
+            if (type === 'wait') return 'ok';
             if (type === 'left') { dir = (dir + 3) % 4; shipState.dir = dir; return 'rotate'; }
             if (type === 'right') { dir = (dir + 1) % 4; shipState.dir = dir; return 'rotate'; }
             if (type === 'forward') {
@@ -1160,8 +1263,39 @@
             if (x < 0 || x >= GRID_SIZE || y < 0 || y >= GRID_SIZE) return 'out';
             if (mapData.obstacles.some(o => o.x === x && o.y === y)) return 'hit';
             if (activeDriftwoods.some(d => d.x === x && d.y === y)) return 'hit';
+            if (mapData.trashIslands && mapData.trashIslands.some(t => Math.abs(t.x - x) <= 1 && Math.abs(t.y - y) <= 1)) {
+                shipState = { x, y, dir };
+                return 'stinky';
+            }
             shipState = { x, y, dir };
             return 'ok';
+        }
+
+        function checkSharkCollision() {
+            if (!activeSharks) return false;
+            return activeSharks.some(s => s.curX === shipState.x && s.curY === shipState.y);
+        }
+
+        function moveSharks() {
+            if (!activeSharks) return;
+            activeSharks.forEach(s => {
+                const dx = Math.sign(s.x2 - s.x1);
+                const dy = Math.sign(s.y2 - s.y1);
+                const oldX = s.curX;
+                const oldY = s.curY;
+                
+                s.curX += dx * s.direction;
+                s.curY += dy * s.direction;
+                
+                if (s.curX === s.x2 && s.curY === s.y2) {
+                    s.direction = -1;
+                } else if (s.curX === s.x1 && s.curY === s.y1) {
+                    s.direction = 1;
+                }
+
+                renderCellObject(oldX, oldY, document.getElementById(`obj-${oldX}-${oldY}`));
+                renderCellObject(s.curX, s.curY, document.getElementById(`obj-${s.curX}-${s.curY}`));
+            });
         }
 
         function showModal(title, desc, icon, btn, showCapture = false) {

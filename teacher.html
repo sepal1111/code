@@ -135,12 +135,14 @@
                             <th class="px-4 py-3 text-center level-cell">第五關</th>
                             <th class="px-4 py-3 text-center level-cell">第六關</th>
                             <th class="px-4 py-3 text-center level-cell">第七關</th>
+                            <th class="px-4 py-3 text-center level-cell">第八關</th>
+                            <th class="px-4 py-3 text-center level-cell">第九關</th>
                             <th class="px-4 py-3 text-center no-print">操作</th>
                         </tr>
                     </thead>
                     <tbody id="student-tbody">
                         <tr id="empty-row">
-                            <td colspan="11" class="text-center py-20 text-slate-500">
+                            <td colspan="13" class="text-center py-20 text-slate-500">
                                 <div class="text-5xl mb-3">📭</div>
                                 <div class="text-base">尚未匯入任何學生紀錄</div>
                                 <div class="text-xs mt-1">在上方貼上進度代碼後點擊「解析並匯入」</div>
@@ -173,7 +175,7 @@ function checkPassword() {
 }
 
 // ========== 代碼解析（與 adventure.html 相同邏輯） ==========
-const CMD_LONG = { F:'forward', B:'backward', L:'left', R:'right', S:'shoot', R2:'repeat_2', R3:'repeat_3' };
+const CMD_LONG = { F:'forward', B:'backward', L:'left', R:'right', S:'shoot', W:'wait', R2:'repeat_2', R3:'repeat_3' };
 
 function deserializeProgram(str) {
     if (!str || !str.trim()) return null;
@@ -219,7 +221,7 @@ function countBlocks(prog) {
 // ========== 學生紀錄 ==========
 let studentRecords = [];  // [{ key, cls, seat, unlockedLevel, gameCleared, levelPrograms, rawCode }]
 
-const TOTAL_LEVELS = 7;
+const TOTAL_LEVELS = 9;
 
 function loadRecords() {
     try {
@@ -298,7 +300,7 @@ function setFeedback(msg, cls) {
 }
 
 // ========== 表格渲染 ==========
-const LEVEL_NAMES = ['一','二','三','四','五','六','七'];
+const LEVEL_NAMES = ['一','二','三','四','五','六','七','八','九'];
 
 function getClearedCount(rec) {
     return rec.levelPrograms.filter(p => p && p.length > 0).length;
@@ -324,7 +326,7 @@ function renderTable() {
     });
 
     if (records.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="11" class="text-center py-20 text-slate-500">
+        tbody.innerHTML = `<tr><td colspan="13" class="text-center py-20 text-slate-500">
             <div class="text-5xl mb-3">📭</div>
             <div>${filterCls ? '找不到符合班級的學生' : '尚未匯入任何學生紀錄'}</div>
         </td></tr>`;
@@ -400,7 +402,7 @@ function updateStats() {
 
 // ========== 匯出 CSV ==========
 function exportCSV() {
-    const header = ['班級','座號','通關數','全部通關','第一關(塊)','第二關(塊)','第三關(塊)','第四關(塊)','第五關(塊)','第六關(塊)','第七關(塊)'];
+    const header = ['班級','座號','通關數','全部通關','第一關(塊)','第二關(塊)','第三關(塊)','第四關(塊)','第五關(塊)','第六關(塊)','第七關(塊)','第八關(塊)','第九關(塊)'];
     const rows = studentRecords.map(r => {
         const cleared = getClearedCount(r);
         const levelData = r.levelPrograms.map(p => p ? p.length : '');
