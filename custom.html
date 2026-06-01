@@ -110,6 +110,32 @@
             animation: slideIn 0.3s ease-out;
             transition: all 0.3s;
         }
+        /* 插入點高亮與標示 */
+        .insert-anchor {
+            outline: 3px solid #f59e0b;
+            outline-offset: 2px;
+            box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.2) !important;
+        }
+        .insert-badge {
+            background: #f59e0b;
+            color: white;
+            font-size: 0.6rem;
+            font-weight: bold;
+            padding: 1px 6px;
+            border-radius: 9999px;
+            margin-left: 4px;
+            white-space: nowrap;
+        }
+        /* 拖放投放指示線 */
+        .drop-indicator {
+            height: 4px;
+            background: #f59e0b;
+            border-radius: 2px;
+            margin: 3px 0;
+            box-shadow: 0 0 6px rgba(245, 158, 11, 0.7);
+            pointer-events: none;
+        }
+        #program-list .repeat-body { min-height: 16px; }
 
         .command-card.executing {
             background-color: #fbbf24 !important;
@@ -267,6 +293,63 @@
             box-shadow: inset 0 0 8px rgba(239, 68, 68, 0.15) !important;
             border: 1px dashed rgba(239, 68, 68, 0.3) !important;
         }
+
+        /* 💣 發射炸彈動畫 */
+        .shoot-muzzle {
+            position: absolute;
+            z-index: 59;
+            pointer-events: none;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255,236,150,0.95), rgba(255,140,0,0.55) 55%, rgba(255,140,0,0) 72%);
+            animation: muzzle-flash 0.35s ease-out forwards;
+        }
+        @keyframes muzzle-flash {
+            0% { transform: scale(0.3); opacity: 0.95; }
+            100% { transform: scale(1.9); opacity: 0; }
+        }
+        .shoot-projectile {
+            position: absolute;
+            z-index: 60;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            filter: drop-shadow(0 2px 3px rgba(0,0,0,0.45));
+            transition: transform 0.28s cubic-bezier(0.45, 0, 0.55, 1);
+        }
+        .shoot-projectile .bomb-emoji {
+            display: inline-block;
+            animation: bomb-spin 0.4s linear infinite;
+        }
+        @keyframes bomb-spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(720deg); }
+        }
+        .shoot-explosion {
+            position: absolute;
+            z-index: 61;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            animation: explosion-burst 0.5s ease-out forwards;
+        }
+        @keyframes explosion-burst {
+            0% { transform: scale(0.2); opacity: 0; }
+            25% { transform: scale(1.1); opacity: 1; }
+            60% { transform: scale(1.45); opacity: 1; }
+            100% { transform: scale(2.1); opacity: 0; }
+        }
+        @keyframes board-shake {
+            0%, 100% { transform: translate(0, 0); }
+            20% { transform: translate(-4px, 2px); }
+            40% { transform: translate(4px, -2px); }
+            60% { transform: translate(-3px, -2px); }
+            80% { transform: translate(3px, 2px); }
+        }
+        .board-shake { animation: board-shake 0.4s ease-in-out; }
     </style>
 </head>
 
@@ -361,6 +444,7 @@
                         <button onclick="clearProgram()" class="text-xs text-red-500 px-3 py-1 bg-red-50 rounded-lg border border-red-200 transition hover:bg-red-100 font-bold">清除全部</button>
                     </div>
                 </div>
+                <p id="insert-hint" class="text-[11px] text-slate-400 mb-1 px-1">💡 點選積木可設為「插入點」，新指令會插入其後；用 ▲▼ 移動積木。</p>
                 <div id="program-list" class="flex-1 p-3 bg-gray-50/50 rounded-xl border-2 border-dashed border-gray-200 overflow-y-auto max-h-[380px]">
                 </div>
                 <button id="run-btn" onclick="runProgram()" class="mt-4 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-2xl shadow-lg transition active:scale-95 text-lg">
@@ -414,6 +498,7 @@
         let shipIcon = '🚢';
         let shipState = { x: mapData.startPos.x, y: mapData.startPos.y, dir: 0 };
         let program = [];
+        let insertAnchor = null; // 指定的插入點（flat index）；null = 附加到最後
         let isRunning = false;
         let stopExecution = false;
         let hasKey = false;
@@ -733,16 +818,25 @@
 
         const REPEAT_MAP = { 'repeat_2': 2, 'repeat_3': 3 };
 
+        function canAddCommand(type) {
+            const limit = mapData.limits ? (mapData.limits[type] !== undefined ? mapData.limits[type] : 0) : 0;
+            if (limit === -1) return false;
+            const used = program.filter(p => p.type === type).length;
+            if (limit !== 0 && used >= limit) return false;
+            return true;
+        }
+
         function addCommand(type) {
             if (isRunning) return;
-            const limit = mapData.limits ? (mapData.limits[type] !== undefined ? mapData.limits[type] : 0) : 0;
-            if (limit === -1) return; // 禁用
-            const used = program.filter(p => p.type === type).length;
-            if (limit !== 0 && used >= limit) return;
+            if (!canAddCommand(type)) return;
 
             const cmd = { type, wrap: 1 };
             if (type === 'repeat_custom') cmd.count = 4;
-            program.push(cmd);
+            if (insertAnchor !== null && insertAnchor >= 0 && insertAnchor < program.length) {
+                insertAnchor = insertCommandAt(insertAnchor, cmd);
+            } else {
+                program.push(cmd);
+            }
             renderProgram();
             updateCardUI();
             playSfx(600);
@@ -769,8 +863,8 @@
             if (input) input.value = count;
         }
 
-        function clearProgram() { if (isRunning) return; program = []; renderProgram(); updateCardUI(); }
-        function popCommand() { if (isRunning || program.length === 0) return; program.pop(); renderProgram(); updateCardUI(); }
+        function clearProgram() { if (isRunning) return; program = []; insertAnchor = null; renderProgram(); updateCardUI(); }
+        function popCommand() { if (isRunning || program.length === 0) return; program.pop(); insertAnchor = null; renderProgram(); updateCardUI(); }
         function resetMap() {
             if (isRunning) return;
             shipState = { x: mapData.startPos.x, y: mapData.startPos.y, dir: 0 };
@@ -859,6 +953,7 @@
                         const block = document.createElement('div');
                         block.className = 'repeat-block';
                         block.id = `repeat-block-${i}`;
+                        block.dataset.flat = i;
                         const header = document.createElement('div');
                         header.className = 'repeat-header';
                         header.id = `repeat-header-${i}`;
@@ -879,22 +974,30 @@
                             repeatLabel = `<span>🔁 重複 x${repCount}</span>`;
                         }
 
+                        if (i === insertAnchor) header.classList.add('insert-anchor');
                         header.innerHTML = `
                             <div class="flex items-center gap-2">
                                 <span class="step-number">${i + 1}</span>
                                 ${repeatLabel}
+                                ${i === insertAnchor ? '<span class="insert-badge">↓插入點</span>' : ''}
                                 <span id="repeat-iteration-${i}" class="repeat-iteration-badge hidden ml-2 bg-white/20 text-white text-[10px] px-1.5 py-0.5 rounded-full font-normal"></span>
                             </div>
-                            <div class="flex items-center gap-2">
-                                <button onclick="changeWrap(${i}, -1)" class="w-5 h-5 bg-white/20 rounded flex items-center justify-center">-</button>
+                            <div class="flex items-center gap-1.5">
+                                <button onclick="event.stopPropagation(); moveUnit(${i}, -1)" class="w-5 h-5 bg-white/20 rounded flex items-center justify-center text-xs" title="上移">▲</button>
+                                <button onclick="event.stopPropagation(); moveUnit(${i}, 1)" class="w-5 h-5 bg-white/20 rounded flex items-center justify-center text-xs" title="下移">▼</button>
+                                <button onclick="event.stopPropagation(); changeWrap(${i}, -1)" class="w-5 h-5 bg-white/20 rounded flex items-center justify-center ml-1">-</button>
                                 <span class="text-sm w-4 text-center">${cmd.wrap}</span>
-                                <button onclick="changeWrap(${i}, 1)" class="w-5 h-5 bg-white/20 rounded flex items-center justify-center">+</button>
-                                <button onclick="removeCommand(${i})" class="ml-2 text-white/50 hover:text-white">✕</button>
+                                <button onclick="event.stopPropagation(); changeWrap(${i}, 1)" class="w-5 h-5 bg-white/20 rounded flex items-center justify-center">+</button>
+                                <button onclick="event.stopPropagation(); removeCommand(${i})" class="ml-1 text-white/50 hover:text-white">✕</button>
                             </div>
                         `;
+                        header.style.cursor = 'pointer';
+                        header.title = '點選設為插入點';
+                        header.onclick = () => setInsertAnchor(i);
                         block.appendChild(header);
                         const body = document.createElement('div');
                         body.className = 'repeat-body';
+                        body.dataset.loop = i;
                         block.appendChild(body);
                         container.appendChild(block);
                         i = renderRecursive(track, i + 1, cmd.wrap, depth + 1, body);
@@ -903,16 +1006,25 @@
                         const cmdIcons = { 'forward': '⬆️', 'backward': '⬇️', 'left': '↪️', 'right': '↩️', 'shoot': '🎯', 'wait': '⏳' };
                         const cmdNames = { 'forward': '前進', 'backward': '後退', 'left': '左轉', 'right': '右轉', 'shoot': '射擊', 'wait': '等待' };
                         const cmdColors = { 'forward': 'bg-blue-600', 'backward': 'bg-blue-600', 'left': 'bg-indigo-600', 'right': 'bg-indigo-600', 'shoot': 'bg-red-600', 'wait': 'bg-slate-600' };
-                        item.className = `command-card ${cmdColors[cmd.type]}`;
+                        item.className = `command-card ${cmdColors[cmd.type]}${i === insertAnchor ? ' insert-anchor' : ''}`;
                         item.id = `program-item-${i}`;
+                        item.dataset.flat = i;
                         item.innerHTML = `
                             <div class="flex items-center gap-2">
                                 <div class="step-number">${i + 1}</div>
                                 <span class="text-xl">${cmdIcons[cmd.type]}</span>
                                 <span class="text-xs">${cmdNames[cmd.type]}</span>
+                                ${i === insertAnchor ? '<span class="insert-badge">↓插入點</span>' : ''}
                             </div>
-                            <button onclick="removeCommand(${i})" class="text-white/40 ml-2">✕</button>
+                            <div class="flex items-center gap-1.5 flex-shrink-0">
+                                <button onclick="event.stopPropagation(); moveUnit(${i}, -1)" class="w-5 h-5 bg-white/20 rounded flex items-center justify-center text-xs" title="上移">▲</button>
+                                <button onclick="event.stopPropagation(); moveUnit(${i}, 1)" class="w-5 h-5 bg-white/20 rounded flex items-center justify-center text-xs" title="下移">▼</button>
+                                <button onclick="event.stopPropagation(); removeCommand(${i})" class="text-white/40 hover:text-white ml-1">✕</button>
+                            </div>
                         `;
+                        item.style.cursor = 'pointer';
+                        item.title = '點選設為插入點';
+                        item.onclick = () => setInsertAnchor(i);
                         container.appendChild(item);
                         i++;
                     }
@@ -922,10 +1034,221 @@
             }
 
             renderRecursive(program, 0, Infinity, 0, list);
-            list.scrollTop = list.scrollHeight;
+
+            const hint = document.getElementById('insert-hint');
+            if (hint) {
+                if (insertAnchor !== null && insertAnchor < program.length) {
+                    hint.innerHTML = `📍 插入點已設定：新指令會插入第 <b>${insertAnchor + 1}</b> 個積木之後（再點一次該積木可取消）。`;
+                    hint.className = 'text-[11px] text-amber-600 font-bold mb-1 px-1';
+                } else {
+                    hint.innerHTML = '💡 點選積木可設為「插入點」，新指令會插入其後；用 ▲▼ 移動積木。';
+                    hint.className = 'text-[11px] text-slate-400 mb-1 px-1';
+                }
+            }
+            if (insertAnchor === null) list.scrollTop = list.scrollHeight;
         }
 
-        function removeCommand(index) { if (isRunning) return; program.splice(index, 1); renderProgram(); updateCardUI(); }
+        function removeCommand(index) {
+            if (isRunning) return;
+            const span = unitSpan(program, index);
+            const encl = enclosingRepeats(program, index);
+            if (encl.length) {
+                const inner = encl[encl.length - 1];
+                program[inner].wrap = Math.max(0, (program[inner].wrap || 0) - 1);
+            }
+            program.splice(index, span);
+            insertAnchor = null;
+            renderProgram();
+            updateCardUI();
+        }
+
+        // ===== 積木插入與移動：共用輔助 =====
+        function isRepeatCmd(cmd) {
+            return cmd && (REPEAT_MAP[cmd.type] || cmd.type === 'repeat_custom');
+        }
+        function unitSpan(arr, i) {
+            const cmd = arr[i];
+            if (!cmd) return 0;
+            if (!isRepeatCmd(cmd)) return 1;
+            let total = 1, idx = i + 1;
+            for (let c = 0; c < (cmd.wrap || 0) && idx < arr.length; c++) {
+                const s = unitSpan(arr, idx);
+                total += s; idx += s;
+            }
+            return total;
+        }
+        function siblingNav(arr, target) {
+            let result = null;
+            function dfs(start, count) {
+                let idx = start, n = 0;
+                const siblings = [], childCalls = [];
+                while (n < count && idx < arr.length) {
+                    siblings.push(idx);
+                    if (isRepeatCmd(arr[idx])) childCalls.push([idx + 1, arr[idx].wrap || 0]);
+                    idx += unitSpan(arr, idx); n++;
+                }
+                const pos = siblings.indexOf(target);
+                if (pos !== -1) { result = { siblings, pos }; return; }
+                for (const [cs, cc] of childCalls) { if (!result) dfs(cs, cc); }
+            }
+            dfs(0, arr.length);
+            return result;
+        }
+        function enclosingRepeats(arr, pos) {
+            const result = [];
+            function dfs(start, count) {
+                let idx = start, n = 0;
+                while (n < count && idx < arr.length) {
+                    const cmd = arr[idx];
+                    const span = unitSpan(arr, idx);
+                    if (isRepeatCmd(cmd)) {
+                        const bodyStart = idx + 1, bodyEnd = idx + span;
+                        if (pos >= bodyStart && pos < bodyEnd) {
+                            result.push(idx);
+                            dfs(bodyStart, cmd.wrap || 0);
+                        }
+                    }
+                    idx += span; n++;
+                }
+            }
+            dfs(0, arr.length);
+            return result;
+        }
+        function insertCommandAt(anchorIdx, cmd) {
+            const a = program[anchorIdx];
+            let insertPos;
+            if (isRepeatCmd(a)) {
+                insertPos = anchorIdx + unitSpan(program, anchorIdx);
+            } else {
+                insertPos = anchorIdx + 1;
+            }
+            const encl = enclosingRepeats(program, anchorIdx);
+            if (encl.length) {
+                const inner = encl[encl.length - 1];
+                program[inner].wrap = (program[inner].wrap || 0) + 1;
+            }
+            program.splice(insertPos, 0, cmd);
+            return insertPos;
+        }
+        function setInsertAnchor(i) {
+            if (isRunning) return;
+            insertAnchor = (insertAnchor === i) ? null : i;
+            renderProgram();
+            playSfx(500, 'sine', 0.03);
+        }
+        function moveUnit(i, dir) {
+            if (isRunning) return;
+            const nav = siblingNav(program, i);
+            if (!nav) return;
+            const { siblings, pos } = nav;
+            const span = unitSpan(program, i);
+            if (dir < 0 && pos > 0) {
+                const prev = siblings[pos - 1];
+                const block = program.splice(i, span);
+                program.splice(prev, 0, ...block);
+            } else if (dir > 0 && pos < siblings.length - 1) {
+                const block = program.splice(i, span);
+                const t = unitSpan(program, i);
+                program.splice(i + t, 0, ...block);
+            } else {
+                return;
+            }
+            insertAnchor = null;
+            renderProgram();
+            updateCardUI();
+            playSfx(700, 'sine', 0.03);
+        }
+
+        // ===== 拖放：從卡片區拖曳指令到程式序列並插入指定位置 =====
+        let draggedType = null;
+
+        function setupPaletteDrag() {
+            const types = ['forward', 'backward', 'left', 'right', 'wait', 'shoot', 'repeat_2', 'repeat_3', 'repeat_custom'];
+            types.forEach(type => {
+                const btn = document.getElementById(`btn-${type}`);
+                if (!btn || btn.dataset.dndReady) return;
+                btn.dataset.dndReady = '1';
+                btn.setAttribute('draggable', 'true');
+                btn.addEventListener('dragstart', (e) => {
+                    if (isRunning || !canAddCommand(type)) { e.preventDefault(); return; }
+                    draggedType = type;
+                    e.dataTransfer.effectAllowed = 'copy';
+                    try { e.dataTransfer.setData('text/plain', type); } catch (_) {}
+                });
+                btn.addEventListener('dragend', () => { draggedType = null; clearDropIndicator(); });
+            });
+        }
+
+        function clearDropIndicator() {
+            document.querySelectorAll('.drop-indicator').forEach(el => el.remove());
+        }
+
+        function getDropContainer(target) {
+            const list = document.getElementById('program-list');
+            let el = target;
+            while (el && el !== list) {
+                if (el.classList && el.classList.contains('repeat-body')) return el;
+                el = el.parentElement;
+            }
+            return list;
+        }
+
+        function computeDrop(clientY, target) {
+            const list = document.getElementById('program-list');
+            const container = getDropContainer(target);
+            const units = [...container.children].filter(c => c.classList && (c.classList.contains('command-card') || c.classList.contains('repeat-block')));
+            let beforeEl = null;
+            for (const u of units) {
+                const r = u.getBoundingClientRect();
+                if (clientY < r.top + r.height / 2) { beforeEl = u; break; }
+            }
+            const loopIdx = (container !== list && container.dataset.loop !== undefined) ? parseInt(container.dataset.loop) : null;
+            let flatPos;
+            if (beforeEl) flatPos = parseInt(beforeEl.dataset.flat);
+            else if (loopIdx === null) flatPos = program.length;
+            else flatPos = loopIdx + unitSpan(program, loopIdx);
+            return { container, beforeEl, flatPos, loopIdx };
+        }
+
+        function setupProgramDnD() {
+            const list = document.getElementById('program-list');
+            if (!list || list.dataset.dndReady) return;
+            list.dataset.dndReady = '1';
+
+            list.addEventListener('dragover', (e) => {
+                if (!draggedType || isRunning) return;
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'copy';
+                clearDropIndicator();
+                const { container, beforeEl } = computeDrop(e.clientY, e.target);
+                const ind = document.createElement('div');
+                ind.className = 'drop-indicator';
+                if (beforeEl) container.insertBefore(ind, beforeEl);
+                else container.appendChild(ind);
+            });
+
+            list.addEventListener('dragleave', (e) => {
+                if (e.target === list && !list.contains(e.relatedTarget)) clearDropIndicator();
+            });
+
+            list.addEventListener('drop', (e) => {
+                if (!draggedType || isRunning) { clearDropIndicator(); return; }
+                e.preventDefault();
+                const type = draggedType;
+                clearDropIndicator();
+                const { flatPos, loopIdx } = computeDrop(e.clientY, e.target);
+                draggedType = null;
+                if (!canAddCommand(type)) return;
+                const cmd = { type, wrap: 1 };
+                if (type === 'repeat_custom') cmd.count = 4;
+                program.splice(flatPos, 0, cmd);
+                if (loopIdx !== null) program[loopIdx].wrap = (program[loopIdx].wrap || 0) + 1;
+                insertAnchor = null;
+                renderProgram();
+                updateCardUI();
+                playSfx(650, 'sine', 0.05);
+            });
+        }
 
         function resetExecutionState() {
             // 清除所有高亮與 iteration badge
@@ -1138,7 +1461,7 @@
                         }
 
                         const currentPortal = mapData.portals.find(p => p.x === shipState.x && p.y === shipState.y);
-                        if (currentPortal) {
+                        if (currentPortal && (step.commandType === 'forward' || step.commandType === 'backward')) {
                             const otherPortal = mapData.portals.find(p => p.color === currentPortal.color && (p.x !== shipState.x || p.y !== shipState.y));
                             if (otherPortal) {
                                 const shipEntity = document.getElementById('ship-entity');
@@ -1204,50 +1527,76 @@
 
         async function performShoot() {
             const { x, y, dir } = shipState;
-            const tx = x + [0, 1, 0, -1][dir];
-            const ty = y + [-1, 0, 1, 0][dir];
+            const dx = [0, 1, 0, -1][dir], dy = [-1, 0, 1, 0][dir];
+            const tx = x + dx, ty = y + dy;
+            const board = document.getElementById('game-board');
+            const boardRect = board.getBoundingClientRect();
+            const srcCell = board.children[y * GRID_SIZE + x];
+            if (!srcCell) return;
+            const sRect = srcCell.getBoundingClientRect();
+            const startX = sRect.left - boardRect.left;
+            const startY = sRect.top - boardRect.top;
+            const inBounds = tx >= 0 && tx < GRID_SIZE && ty >= 0 && ty < GRID_SIZE;
+            const tgtCell = inBounds ? board.children[ty * GRID_SIZE + tx] : null;
 
-            // 播放射擊音效並等待
-            await playAudio('laser.mp3');
+            const place = (el) => {
+                el.style.left = `${startX}px`;
+                el.style.top = `${startY}px`;
+                el.style.width = `${sRect.width}px`;
+                el.style.height = `${sRect.height}px`;
+            };
 
-            const bullet = document.createElement('div');
-            bullet.innerHTML = '☄️';
-            bullet.className = 'absolute z-[60] transition-all duration-300 text-xl';
-            const cell = document.getElementById(`cell-${x}-${y}`);
-            cell.appendChild(bullet);
+            playAudio('laser.mp3');
 
-            await new Promise(r => setTimeout(r, 50));
-            const targetCell = document.getElementById(`cell-${tx}-${ty}`);
-            if (targetCell) {
-                const rect = targetCell.getBoundingClientRect();
-                const startRect = cell.getBoundingClientRect();
-                bullet.style.transform = `translate(${rect.left - startRect.left}px, ${rect.top - startRect.top}px)`;
+            // 砲口閃光
+            const flash = document.createElement('div');
+            flash.className = 'shoot-muzzle';
+            place(flash);
+            board.appendChild(flash);
+            setTimeout(() => flash.remove(), 360);
+
+            // 旋轉飛行的炸彈
+            const proj = document.createElement('div');
+            proj.className = 'shoot-projectile';
+            proj.innerHTML = '<span class="bomb-emoji">💣</span>';
+            place(proj);
+            board.appendChild(proj);
+
+            await new Promise(r => setTimeout(r, 40));
+            let endX = startX, endY = startY;
+            if (tgtCell) {
+                const tRect = tgtCell.getBoundingClientRect();
+                endX = tRect.left - boardRect.left;
+                endY = tRect.top - boardRect.top;
             } else {
-                bullet.style.opacity = '0';
+                endX = startX + dx * sRect.width;
+                endY = startY + dy * sRect.height;
             }
-            
-            await new Promise(r => setTimeout(r, 300));
-            bullet.remove();
+            proj.style.transform = `translate(${endX - startX}px, ${endY - startY}px)`;
+            await new Promise(r => setTimeout(r, 280));
+            proj.remove();
+
+            // 命中點爆炸 + 棋盤震動
+            const boom = document.createElement('div');
+            boom.className = 'shoot-explosion';
+            boom.innerHTML = '💥';
+            boom.style.left = `${endX}px`;
+            boom.style.top = `${endY}px`;
+            boom.style.width = `${sRect.width}px`;
+            boom.style.height = `${sRect.height}px`;
+            board.appendChild(boom);
+            board.classList.add('board-shake');
+            playAudio('bomb.mp3');
+            setTimeout(() => board.classList.remove('board-shake'), 420);
 
             const driftwoodIndex = activeDriftwoods.findIndex(d => d.x === tx && d.y === ty);
             if (driftwoodIndex !== -1) {
                 activeDriftwoods.splice(driftwoodIndex, 1);
                 const objLayer = document.getElementById(`obj-${tx}-${ty}`);
-                
-                // 爆炸動畫
-                const exp = document.createElement('div');
-                exp.className = 'explosion-effect text-3xl';
-                exp.innerHTML = '💥';
-                objLayer.appendChild(exp);
-                
-                // 播放爆炸音效並等待
-                await playAudio('bomb.mp3');
-                
-                setTimeout(() => { 
-                    objLayer.innerHTML = ''; 
-                    exp.remove();
-                }, 600);
+                if (objLayer) objLayer.innerHTML = '';
             }
+            await new Promise(r => setTimeout(r, 420));
+            boom.remove();
         }
 
         function moveShip(type) {
@@ -1340,6 +1689,8 @@
             loadMap();
             initBoard();
             updateCardUI();
+            setupPaletteDrag();
+            setupProgramDnD();
         };
 
         // 監聽第一次點擊以啟動音樂 (瀏覽器限制自動播放)

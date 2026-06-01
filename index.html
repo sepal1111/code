@@ -57,10 +57,166 @@
         .floating-ship {
             animation: float 4s ease-in-out infinite;
         }
+
+        /* 首次進入・情境引導故事 */
+        #intro-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 300;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            background:
+                radial-gradient(circle at 50% 20%, rgba(56, 189, 248, 0.25), transparent 60%),
+                linear-gradient(160deg, #0c4a6e 0%, #075985 45%, #0c4a6e 100%);
+            overflow: hidden;
+        }
+
+        #intro-overlay.show {
+            display: flex;
+        }
+
+        #intro-overlay.fade-out {
+            animation: introFade 0.5s ease forwards;
+        }
+
+        @keyframes introFade {
+            to {
+                opacity: 0;
+                visibility: hidden;
+            }
+        }
+
+        .intro-card {
+            position: relative;
+            max-width: 640px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(14px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 2rem;
+            padding: 2.5rem 2rem 2rem;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.45);
+            text-align: center;
+            color: white;
+        }
+
+        .intro-skip {
+            position: absolute;
+            top: 1rem;
+            right: 1.25rem;
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.6);
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 0.25rem 0.85rem;
+            border-radius: 9999px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .intro-skip:hover {
+            color: white;
+            background: rgba(255, 255, 255, 0.18);
+        }
+
+        .intro-scene-icon {
+            font-size: 4.5rem;
+            line-height: 1;
+            margin-bottom: 1.25rem;
+            display: block;
+            filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.35));
+        }
+
+        .intro-scene-title {
+            font-size: 1.6rem;
+            font-weight: 900;
+            color: #fde68a;
+            margin-bottom: 1rem;
+            letter-spacing: 0.02em;
+        }
+
+        .intro-scene-text {
+            font-size: 1.02rem;
+            line-height: 1.9;
+            color: #e0f2fe;
+            min-height: 9.5rem;
+        }
+
+        .intro-scene {
+            animation: sceneIn 0.5s ease-out;
+        }
+
+        @keyframes sceneIn {
+            from {
+                opacity: 0;
+                transform: translateY(14px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .intro-dots {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+            margin: 1.5rem 0;
+        }
+
+        .intro-dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.25);
+            transition: all 0.3s;
+        }
+
+        .intro-dot.active {
+            background: #fbbf24;
+            transform: scale(1.3);
+        }
+
+        .intro-next-btn {
+            background: #fbbf24;
+            color: #0c4a6e;
+            font-weight: 900;
+            font-size: 1.15rem;
+            padding: 0.85rem 2.5rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px rgba(251, 191, 36, 0.4);
+            transition: all 0.2s;
+        }
+
+        .intro-next-btn:hover {
+            background: #fcd34d;
+            transform: scale(1.05);
+        }
+
+        .intro-next-btn:active {
+            transform: scale(0.96);
+        }
     </style>
 </head>
 
 <body class="min-h-screen flex items-center justify-center p-6">
+
+    <!-- 首次進入・情境引導故事 -->
+    <div id="intro-overlay">
+        <div class="intro-card">
+            <button class="intro-skip" onclick="finishIntro()">跳過 ✕</button>
+            <div id="intro-scene" class="intro-scene">
+                <span class="intro-scene-icon" id="intro-icon">🌊</span>
+                <h2 class="intro-scene-title" id="intro-title"></h2>
+                <p class="intro-scene-text" id="intro-text"></p>
+            </div>
+            <div class="intro-dots" id="intro-dots"></div>
+            <button class="intro-next-btn" id="intro-next" onclick="nextScene()">下一步 →</button>
+        </div>
+    </div>
 
     <div class="max-w-4xl w-full text-white text-center">
         <div class="mb-12">
@@ -110,6 +266,10 @@
                 class="inline-flex items-center gap-2 px-6 py-2 bg-slate-800/40 hover:bg-slate-800/60 text-white rounded-full text-sm font-bold backdrop-blur-sm transition-all border border-slate-700/50">
                 👨‍🏫 教師管理
             </a>
+            <button onclick="replayIntro()"
+                class="inline-flex items-center gap-2 px-6 py-2 bg-white/20 hover:bg-white/30 text-white rounded-full text-sm font-bold backdrop-blur-sm transition-all border border-white/10">
+                ✨ 重看開場故事
+            </button>
         </div>
 
         <p class="text-sky-200/60 text-sm font-medium">
@@ -117,14 +277,90 @@
             背景音樂由<a target="_blank" class="font-bold text-yellow-400"
                 href="https://pixabay.com/zh/music/search/ocean/">Pixabay</a>提供、
             部分圖示取自<a target="_blank" class="font-bold text-yellow-400" href="https://www.canva.com/">Canva網站</a><br>
-            <span class="text-xs opacity-70 mt-2 block">發布日期：2026-05-27</span>
-            <span class="text-xs opacity-70 mt-2 block">版本：V4.0</span>
+            <span class="text-xs opacity-70 mt-2 block">發布日期：2026-06-01</span>
+            <span class="text-xs opacity-70 mt-2 block">版本：V5.0</span>
 
         </p>
     </div>
 
     <script>
         let selectedIcon = '🚢';
+
+        // ===== 首次進入・情境引導故事（航海尋寶） =====
+        const introScenes = [
+            {
+                icon: '🌊🏝️',
+                title: '傳說・編程之海',
+                text: '在遙遠的『編程之海』深處，沉睡著一座神秘的『運算神殿』。<br>傳說神殿裡藏著能解開世界一切謎題的智慧與無盡的財寶……<br>千百年來，無數航海家嘗試前往，卻沒有人能通過重重的海上試煉。'
+            },
+            {
+                icon: '🗺️✨',
+                title: '神秘的海圖',
+                text: '某天清晨，一張會發光的古老海圖飄進了你的窗口。<br>海圖上，一條通往神殿的航線若隱若現——<br>彷彿在呼喚著一位夠聰明、夠冷靜的航海家。<br>那個人，會是你嗎？'
+            },
+            {
+                icon: '🚢🦜',
+                title: '編程之星與夥伴羅盤',
+                text: '你登上了傳說中的自動航海船『編程之星』。<br>它與眾不同：無法用手駕駛，只聽得懂一張張『指令卡片』。<br>聒噪又聰明的鸚鵡導航「羅盤」停上你的肩膀：<br>「船長！這趟旅程，你得學會像<b>程式設計師</b>一樣思考喔！」'
+            },
+            {
+                icon: '🧩➡️🏆',
+                title: '你的航海智慧',
+                text: '把指令卡片照<b>順序</b>排好，編程之星就會自動航行；<br>學會<b>迴圈</b>、<b>條件</b>、<b>傳送</b>與<b>時序</b>，就能避開暗礁、鯊魚與漩渦。<br>準備好了嗎？選一艘屬於你的船，<br>朝著運算神殿，啟航吧！'
+            }
+        ];
+        let introIndex = 0;
+
+        function renderScene() {
+            const s = introScenes[introIndex];
+            document.getElementById('intro-icon').innerHTML = s.icon;
+            document.getElementById('intro-title').innerHTML = s.title;
+            document.getElementById('intro-text').innerHTML = s.text;
+            // 重播淡入動畫
+            const sceneEl = document.getElementById('intro-scene');
+            sceneEl.classList.remove('intro-scene');
+            void sceneEl.offsetWidth;
+            sceneEl.classList.add('intro-scene');
+            // 進度圓點
+            const dots = document.getElementById('intro-dots');
+            dots.innerHTML = '';
+            introScenes.forEach((_, i) => {
+                const d = document.createElement('div');
+                d.className = 'intro-dot' + (i === introIndex ? ' active' : '');
+                dots.appendChild(d);
+            });
+            // 按鈕文字
+            const btn = document.getElementById('intro-next');
+            btn.innerHTML = (introIndex === introScenes.length - 1) ? '⚓ 登船出發！' : '下一步 →';
+        }
+
+        function showIntro() {
+            introIndex = 0;
+            renderScene();
+            const ov = document.getElementById('intro-overlay');
+            ov.classList.remove('fade-out');
+            ov.classList.add('show');
+        }
+
+        function nextScene() {
+            if (introIndex < introScenes.length - 1) {
+                introIndex++;
+                renderScene();
+            } else {
+                finishIntro();
+            }
+        }
+
+        function finishIntro() {
+            localStorage.setItem('pirate_intro_seen', '1');
+            const ov = document.getElementById('intro-overlay');
+            ov.classList.add('fade-out');
+            setTimeout(() => { ov.classList.remove('show', 'fade-out'); ov.style.visibility = ''; }, 500);
+        }
+
+        function replayIntro() {
+            showIntro();
+        }
 
         function selectShip(icon, id) {
             selectedIcon = icon;
@@ -157,6 +393,10 @@
                 const icons = ['🚢', '⛵', '🛥️', '🛶'];
                 const idx = icons.indexOf(savedIcon);
                 if (idx !== -1) selectShip(savedIcon, idx);
+            }
+            // 首次進入網站，自動播放情境引導故事
+            if (!localStorage.getItem('pirate_intro_seen')) {
+                showIntro();
             }
         };
     </script>

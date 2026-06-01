@@ -7,6 +7,7 @@
     <title>闖關冒險 - 找到寶藏吧！</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dom-to-image/2.6.0/dom-to-image.min.js"></script>
+    <script src="levels.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap');
 
@@ -216,6 +217,32 @@
             animation: slideIn 0.3s ease-out;
             transition: all 0.3s;
         }
+        /* 插入點高亮與標示 */
+        .insert-anchor {
+            outline: 3px solid #f59e0b;
+            outline-offset: 2px;
+            box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.2) !important;
+        }
+        .insert-badge {
+            background: #f59e0b;
+            color: white;
+            font-size: 0.6rem;
+            font-weight: bold;
+            padding: 1px 6px;
+            border-radius: 9999px;
+            margin-left: 4px;
+            white-space: nowrap;
+        }
+        /* 拖放投放指示線 */
+        .drop-indicator {
+            height: 4px;
+            background: #f59e0b;
+            border-radius: 2px;
+            margin: 3px 0;
+            box-shadow: 0 0 6px rgba(245, 158, 11, 0.7);
+            pointer-events: none;
+        }
+        #program-list .repeat-body { min-height: 16px; }
 
         .command-card.executing {
             background-color: #fbbf24 !important;
@@ -398,6 +425,209 @@
             box-shadow: inset 0 0 8px rgba(239, 68, 68, 0.15) !important;
             border: 1px dashed rgba(239, 68, 68, 0.3) !important;
         }
+
+        /* 故事劇情彈窗樣式 */
+        .story-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(6px);
+            z-index: 250;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease-out;
+        }
+        .story-overlay.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .story-box {
+            background: rgba(255, 255, 255, 0.95);
+            border: 2px solid rgba(255, 255, 255, 0.8);
+            border-radius: 2rem;
+            max-width: 650px;
+            width: 100%;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            overflow: hidden;
+            animation: pop-up 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+        @keyframes pop-up {
+            from { transform: scale(0.9) translateY(20px); }
+            to { transform: scale(1) translateY(0); }
+        }
+        .story-header {
+            background: linear-gradient(135deg, #0ea5e9, #0284c7);
+            color: white;
+            padding: 1.25rem 1.75rem;
+            font-weight: bold;
+        }
+        .story-content {
+            padding: 1.5rem;
+            overflow-y: auto;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+        .prologue-box {
+            background: #f0f9ff;
+            border-left: 4px solid #0ea5e9;
+            padding: 1rem 1.25rem;
+            border-radius: 0.75rem;
+            font-size: 0.85rem;
+            color: #0369a1;
+            line-height: 1.6;
+            font-weight: 500;
+        }
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .chat-bubble-wrapper {
+            display: flex;
+            gap: 0.75rem;
+            align-items: flex-start;
+        }
+        .chat-bubble-wrapper.captain {
+            flex-direction: row-reverse;
+        }
+        .chat-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border: 2px solid #e2e8f0;
+            flex-shrink: 0;
+        }
+        .chat-bubble {
+            max-width: 75%;
+            padding: 0.75rem 1.1rem;
+            border-radius: 1.25rem;
+            font-size: 0.85rem;
+            line-height: 1.5;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            position: relative;
+        }
+        .chat-bubble-wrapper.navigator .chat-bubble {
+            background: #ecfeff;
+            color: #083344;
+            border-top-left-radius: 0.25rem;
+            border: 1px solid #cffafe;
+        }
+        .chat-bubble-wrapper.captain .chat-bubble {
+            background: #fffbeb;
+            color: #451a03;
+            border-top-right-radius: 0.25rem;
+            border: 1px solid #fef3c7;
+        }
+        .chat-name {
+            font-size: 0.7rem;
+            font-weight: bold;
+            color: #64748b;
+            margin-bottom: 0.25rem;
+            display: block;
+        }
+        .chat-bubble-wrapper.captain .chat-name {
+            text-align: right;
+        }
+        .concept-card {
+            background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+            border: 1.5px dashed #22c55e;
+            border-radius: 1.25rem;
+            padding: 1.1rem;
+            color: #14532d;
+            font-size: 0.85rem;
+            line-height: 1.5;
+        }
+        .story-footer {
+            padding: 1.25rem 1.5rem;
+            border-top: 1px solid #f1f5f9;
+            background: #f8fafc;
+            display: flex;
+            justify-content: flex-end;
+        }
+        /* 終章結局樣式 */
+        .epilogue-box {
+            background: linear-gradient(135deg, #fffbeb, #fef3c7);
+            border: 1.5px solid #f59e0b;
+            border-radius: 1.25rem;
+            padding: 1.4rem 1.5rem;
+            color: #78350f;
+            font-size: 0.9rem;
+            line-height: 1.75;
+            white-space: pre-line;
+            box-shadow: inset 0 0 12px rgba(245, 158, 11, 0.1);
+        }
+
+        /* 💣 發射炸彈動畫 */
+        .shoot-muzzle {
+            position: absolute;
+            z-index: 59;
+            pointer-events: none;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255,236,150,0.95), rgba(255,140,0,0.55) 55%, rgba(255,140,0,0) 72%);
+            animation: muzzle-flash 0.35s ease-out forwards;
+        }
+        @keyframes muzzle-flash {
+            0% { transform: scale(0.3); opacity: 0.95; }
+            100% { transform: scale(1.9); opacity: 0; }
+        }
+        .shoot-projectile {
+            position: absolute;
+            z-index: 60;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            filter: drop-shadow(0 2px 3px rgba(0,0,0,0.45));
+            transition: transform 0.28s cubic-bezier(0.45, 0, 0.55, 1);
+        }
+        .shoot-projectile .bomb-emoji {
+            display: inline-block;
+            animation: bomb-spin 0.4s linear infinite;
+        }
+        @keyframes bomb-spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(720deg); }
+        }
+        .shoot-explosion {
+            position: absolute;
+            z-index: 61;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            animation: explosion-burst 0.5s ease-out forwards;
+        }
+        @keyframes explosion-burst {
+            0% { transform: scale(0.2); opacity: 0; }
+            25% { transform: scale(1.1); opacity: 1; }
+            60% { transform: scale(1.45); opacity: 1; }
+            100% { transform: scale(2.1); opacity: 0; }
+        }
+        @keyframes board-shake {
+            0%, 100% { transform: translate(0, 0); }
+            20% { transform: translate(-4px, 2px); }
+            40% { transform: translate(4px, -2px); }
+            60% { transform: translate(-3px, -2px); }
+            80% { transform: translate(3px, 2px); }
+        }
+        .board-shake { animation: board-shake 0.4s ease-in-out; }
     </style>
 </head>
 
@@ -422,6 +652,9 @@
                 <button onclick="openProgressModal()"
                     class="px-3 py-1.5 bg-sky-500 hover:bg-sky-600 text-white text-xs font-bold rounded-xl transition shadow-sm flex items-center gap-1">
                     📋 進度代碼</button>
+                <button onclick="openStoryModal()"
+                    class="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl transition shadow-sm flex items-center gap-1">
+                    📖 劇情</button>
                 <button onclick="goHome()"
                     class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-xl transition">
                     🏠 首頁</button>
@@ -457,17 +690,7 @@
         
 
         <!-- 關卡導航 -->
-        <div id="level-nav" class="flex flex-wrap items-center justify-center gap-2 px-2">
-            <button onclick="switchLevel(0)" id="lvl-btn-0" class="lvl-btn px-3 py-1 rounded-full text-xs font-bold transition">第一關</button>
-            <button onclick="switchLevel(1)" id="lvl-btn-1" class="lvl-btn lvl-locked px-3 py-1 rounded-full text-xs font-bold transition">第二關 🔒</button>
-            <button onclick="switchLevel(2)" id="lvl-btn-2" class="lvl-btn lvl-locked px-3 py-1 rounded-full text-xs font-bold transition">第三關 🔒</button>
-            <button onclick="switchLevel(3)" id="lvl-btn-3" class="lvl-btn lvl-locked px-3 py-1 rounded-full text-xs font-bold transition">第四關 🔒</button>
-            <button onclick="switchLevel(4)" id="lvl-btn-4" class="lvl-btn lvl-locked px-3 py-1 rounded-full text-xs font-bold transition">第五關 🔒</button>
-            <button onclick="switchLevel(5)" id="lvl-btn-5" class="lvl-btn lvl-locked px-3 py-1 rounded-full text-xs font-bold transition">第六關 🔒</button>
-            <button onclick="switchLevel(6)" id="lvl-btn-6" class="lvl-btn lvl-locked px-3 py-1 rounded-full text-xs font-bold transition">第七關 🔒</button>
-            <button onclick="switchLevel(7)" id="lvl-btn-7" class="lvl-btn lvl-locked px-3 py-1 rounded-full text-xs font-bold transition">第八關 🔒</button>
-            <button onclick="switchLevel(8)" id="lvl-btn-8" class="lvl-btn lvl-locked px-3 py-1 rounded-full text-xs font-bold transition">第九關 🔒</button>
-        </div>
+        <div id="level-nav" class="flex flex-wrap items-center justify-center gap-2 px-2"></div>
         <p id="level-desc" class="text-sky-600 mt-3 font-bold text-sm bg-white/90 px-5 py-1.5 rounded-full border border-sky-100 shadow-sm inline-block mx-2 whitespace-nowrap w-max">準備冒險...</p>
         <span id="timer-display" class="hidden text-orange-600 mt-3 font-bold text-sm bg-white/90 px-5 py-1.5 rounded-full border border-orange-100 shadow-sm inline-block mx-2 whitespace-nowrap w-max" style="font-family: monospace, sans-serif;">⏱️ 00:00</span>
     </header>
@@ -555,6 +778,7 @@
                     <span>🏆</span>
                     <span>過關紀錄—按「清除全部」可重新編輯指令</span>
                 </div>
+                <p id="insert-hint" class="text-[11px] text-slate-400 mb-1 px-1">💡 點選積木可設為「插入點」，新指令會插入其後；用 ▲▼ 移動積木。</p>
                 <div id="program-list" class="flex-1 p-3 bg-gray-50/50 rounded-xl border-2 border-dashed border-gray-200 overflow-y-auto max-h-[380px]"></div>
                 <button id="run-btn" onclick="runProgram()" class="mt-4 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-2xl shadow-lg transition active:scale-95 text-lg">🚀 開始航行</button>
             </div>
@@ -654,30 +878,47 @@
             </div>
         </div>
     </div>
-
+    <!-- 📖 故事劇情與引導 Modal -->
+    <div id="story-modal" class="story-overlay">
+        <div class="story-box">
+            <header class="story-header flex items-center justify-between">
+                <span id="story-title" class="text-lg">📖 故事前情</span>
+                <button onclick="closeStoryModal()" class="text-white hover:text-sky-100 text-xl font-bold leading-none">&times;</button>
+            </header>
+            <div class="story-content custom-scrollbar">
+                <!-- 前導前言 (有需要時顯示) -->
+                <div id="story-prologue-container" class="prologue-box hidden">
+                    <p id="story-prologue"></p>
+                </div>
+                <!-- 對話列表 -->
+                <div id="story-chat" class="chat-container"></div>
+                <!-- 知識卡片 -->
+                <div id="story-concept" class="concept-card"></div>
+                <!-- 終章結局 (僅最終通關時顯示) -->
+                <div id="story-epilogue-container" class="epilogue-box hidden">
+                    <p id="story-epilogue"></p>
+                </div>
+            </div>
+            <footer class="story-footer">
+                <button id="story-footer-btn" onclick="closeStoryModal()" class="px-6 py-2.5 bg-sky-600 hover:bg-sky-700 text-white rounded-xl font-bold shadow-lg transition active:scale-95 text-sm">開始挑戰 →</button>
+            </footer>
+        </div>
+    </div>
     <script>
         // --- 核心定義 ---
-        const GRID_SIZE = 9;
+        let GRID_SIZE = 9;
         let startPos = { x: 4, y: 8 };
         let endPos = { x: 4, y: 0 };
 
-        let customLevels = [
-            { name: "第一關：自由航行", desc: "熟悉指令，探索海域。", limits: null, showRepeat: false, obstacles: [], portals: [], startPos: { x: 4, y: 8 }, endPos: { x: 4, y: 0 } },
-            { name: "第二關：邏輯跳躍", desc: "僅一張前進卡？運用重複的魔力！", limits: { forward: 1, backward: 0, left: 0, right: 0, repeat_custom: -1 }, showRepeat: true, obstacles: [], portals: [], startPos: { x: 4, y: 8 }, endPos: { x: 4, y: 0 } },
-            { name: "第三關：精準控制", desc: "資源限制！請謹慎規劃。", limits: { forward: 6, backward: 2, left: 2, right: 2 }, showRepeat: false, obstacles: [], portals: [], startPos: { x: 4, y: 8 }, endPos: { x: 4, y: 0 } },
-            { name: "第四關：避開礁石", desc: "前方有巨石阻擋，請繞道而行。", limits: { forward: 5, left: 2, right: 2, backward: 1 }, showRepeat: true, obstacles: [{ x: 4, y: 4 }], portals: [], startPos: { x: 4, y: 8 }, endPos: { x: 4, y: 0 } },
-            { name: "第五關：傳送秘境", desc: "跨越礁石牆，尋找神祕傳送門。", limits: { forward: 2, left: 1, right: 1 }, showRepeat: true, obstacles: [{ x: 0, y: 4 }, { x: 1, y: 4 }, { x: 2, y: 4 }, { x: 3, y: 4 }, { x: 4, y: 4 }, { x: 5, y: 4 }, { x: 6, y: 4 }, { x: 7, y: 4 }, { x: 8, y: 4 }], portals: [{ x: 0, y: 8, targetX: 8, targetY: 0 }, { x: 8, y: 0, targetX: 0, targetY: 8 }], startPos: { x: 4, y: 8 }, endPos: { x: 4, y: 0 } },
-            { name: "第六關：綜合闖關", desc: "靈活運用傳送與重複指令。", limits: { forward: 2, backward: 2, left: 2, right: 2 }, showRepeat: true, obstacles: [{ x: 3, y: 7 }, { x: 1, y: 6 }, { x: 3, y: 5 }, { x: 1, y: 4 }, { x: 3, y: 3 }, { x: 1, y: 2 }, { x: 1, y: 0 }, { x: 7, y: 0 }, { x: 7, y: 2 }, { x: 7, y: 4 }, { x: 7, y: 6 }, { x: 5, y: 7 }, { x: 5, y: 5 }, { x: 5, y: 3 }, { x: 4, y: 1 }], portals: [], startPos: { x: 4, y: 8 }, endPos: { x: 4, y: 0 } },
-            { name: "第七關：時空金鑰", desc: "運用傳送門穿梭海域取得金鑰，並解鎖神秘寶藏。", limits: null, showRepeat: true, obstacles: [{ x: 0, y: 3 }, { x: 1, y: 3 }, { x: 2, y: 3 }, { x: 6, y: 5 }, { x: 7, y: 5 }, { x: 8, y: 5 }, { x: 4, y: 4 }, { x: 3, y: 4 }, { x: 5, y: 4 }], portals: [{ x: 0, y: 0, targetX: 8, targetY: 8 }, { x: 8, y: 8, targetX: 0, targetY: 0 }], keyPos: { x: 0, y: 5 }, startPos: { x: 4, y: 8 }, endPos: { x: 8, y: 4 } },
-            { name: "第八關：臭氣突襲", desc: "海域出現了臭氣熏天的垃圾島，靠近一格內就會被臭死！請小心避開周圍的警戒區。", limits: null, showRepeat: true, obstacles: [], portals: [], trashIslands: [{ x: 4, y: 4 }], startPos: { x: 4, y: 8 }, endPos: { x: 4, y: 0 } },
-            { name: "第九關：鯊魚海域", desc: "前方有飢餓的鯊魚在巡邏！看清牠的移動軌跡，精準規劃避開牠。", limits: null, showRepeat: true, obstacles: [{ x: 2, y: 5 }, { x: 3, y: 5 }, { x: 5, y: 5 }, { x: 6, y: 5 }, { x: 2, y: 3 }, { x: 3, y: 3 }, { x: 5, y: 3 }, { x: 6, y: 3 }], portals: [], sharks: [{ id: 9001, x1: 1, y1: 4, x2: 7, y2: 4, curX: 1, curY: 4, direction: 1 }], startPos: { x: 4, y: 8 }, endPos: { x: 4, y: 0 } }
-        ];
+        let customLevels = window.gameLevels || [];
 
         let currentLevelIndex = 0;
         let unlockedLevel = parseInt(localStorage.getItem('pirate_unlocked_level') || '0');
+        unlockedLevel = Math.min(unlockedLevel, customLevels.length - 1);
         let shipIcon = localStorage.getItem('pirate_ship_icon') || '🚢';
         let shipState = { x: 4, y: 8, dir: 0 };
         let program = [];
+        let insertAnchor = null; // 指定的插入點（flat index）；null = 附加到最後
         let isProgramLocked = false;
         let isRunning = false;
         let stopExecution = false;
@@ -692,9 +933,9 @@
 
         let levelPrograms = JSON.parse(localStorage.getItem('pirate_level_programs') || 'null');
         if (!levelPrograms) {
-            levelPrograms = Array(9).fill(null);
+            levelPrograms = Array(customLevels.length).fill(null);
         } else {
-            while (levelPrograms.length < 9) levelPrograms.push(null);
+            while (levelPrograms.length < customLevels.length) levelPrograms.push(null);
         }
 
         let studentClass = localStorage.getItem('pirate_student_class') || '';
@@ -798,7 +1039,8 @@
             } else if (lvl.portals) {
                 const p = lvl.portals.find(p => p.x === x && p.y === y);
                 if (p) {
-                    layer.innerHTML = `<span class="text-2xl">🟣</span>`;
+                    const portalIcons = { purple: '🟣', green: '🟢', blue: '🔵' };
+                    layer.innerHTML = `<span class="text-2xl">${portalIcons[p.color] || '🟣'}</span>`;
                 } else {
                     const shark = activeSharks && activeSharks.find(s => s.curX === x && s.curY === y);
                     if (shark) {
@@ -816,6 +1058,10 @@
         function initBoard() {
             const board = document.getElementById('game-board');
             const lvl = customLevels[currentLevelIndex];
+            GRID_SIZE = lvl.size || 9;
+            board.style.display = 'grid';
+            board.style.gridTemplateColumns = `repeat(${GRID_SIZE}, 1fr)`;
+            
             startPos = lvl.startPos || { x: 4, y: 8 };
             endPos = lvl.endPos || { x: 4, y: 0 };
             board.innerHTML = '';
@@ -881,6 +1127,117 @@
             location.href = 'index.html';
         }
 
+        function initLevelNav() {
+            const nav = document.getElementById('level-nav');
+            if (!nav) return;
+            nav.innerHTML = '';
+            customLevels.forEach((lvl, idx) => {
+                const btn = document.createElement('button');
+                btn.id = `lvl-btn-${idx}`;
+                btn.onclick = () => switchLevel(idx);
+                btn.className = 'lvl-btn px-3 py-1 rounded-full text-xs font-bold transition';
+                nav.appendChild(btn);
+            });
+        }
+
+        function openStoryModal() {
+            const lvl = customLevels[currentLevelIndex];
+            if (!lvl || !lvl.story) return;
+
+            // 重置為一般關卡劇情模式（隱藏結局、復原頁尾按鈕）
+            document.getElementById('story-epilogue-container').classList.add('hidden');
+            document.getElementById('story-chat').style.display = '';
+            const footerBtn = document.getElementById('story-footer-btn');
+            footerBtn.innerText = '開始挑戰 →';
+            footerBtn.onclick = closeStoryModal;
+
+            document.getElementById('story-title').innerText = `📖 關卡劇情：${lvl.name}`;
+
+            // Prologue (only show on Level 1 prologue if available, or if lvl.story has prologue)
+            const prologueContainer = document.getElementById('story-prologue-container');
+            const prologueText = document.getElementById('story-prologue');
+            if (lvl.story.prologue) {
+                prologueContainer.classList.remove('hidden');
+                prologueText.innerText = lvl.story.prologue;
+            } else {
+                prologueContainer.classList.add('hidden');
+            }
+
+            // Dialogue
+            const chatContainer = document.getElementById('story-chat');
+            chatContainer.innerHTML = '';
+            
+            const roleIcons = { navigator: '🦜', captain: '🧑‍✈️' };
+            
+            if (lvl.story.dialogue && lvl.story.dialogue.length > 0) {
+                lvl.story.dialogue.forEach(line => {
+                    const msgWrapper = document.createElement('div');
+                    msgWrapper.className = `chat-bubble-wrapper ${line.role}`;
+                    
+                    const avatar = document.createElement('div');
+                    avatar.className = 'chat-avatar';
+                    avatar.innerText = roleIcons[line.role] || '👤';
+                    
+                    const textContainer = document.createElement('div');
+                    textContainer.className = 'flex flex-col';
+                    
+                    const name = document.createElement('span');
+                    name.className = 'chat-name';
+                    name.innerText = line.name || '';
+                    
+                    const bubble = document.createElement('div');
+                    bubble.className = 'chat-bubble';
+                    bubble.innerText = line.text || '';
+                    
+                    textContainer.appendChild(name);
+                    textContainer.appendChild(bubble);
+                    
+                    msgWrapper.appendChild(avatar);
+                    msgWrapper.appendChild(textContainer);
+                    chatContainer.appendChild(msgWrapper);
+                });
+            }
+
+            // Concept
+            const conceptContainer = document.getElementById('story-concept');
+            if (lvl.story.concept) {
+                conceptContainer.style.display = 'block';
+                conceptContainer.innerHTML = lvl.story.concept;
+            } else {
+                conceptContainer.style.display = 'none';
+            }
+
+            document.getElementById('story-modal').classList.add('open');
+        }
+
+        function closeStoryModal() {
+            document.getElementById('story-modal').classList.remove('open');
+        }
+
+        // 最終通關時顯示「終章結局」，呼應開場前導，完成故事弧線
+        function openEpilogueModal(onDone) {
+            const lvl = customLevels[currentLevelIndex];
+            if (!lvl || !lvl.story || !lvl.story.epilogue) {
+                if (onDone) onDone();
+                return;
+            }
+            document.getElementById('story-title').innerText = '🎉 終章：抵達運算神殿';
+            // 隱藏前導、對話、知識卡，只呈現結局
+            document.getElementById('story-prologue-container').classList.add('hidden');
+            document.getElementById('story-concept').style.display = 'none';
+            document.getElementById('story-chat').style.display = 'none';
+            document.getElementById('story-epilogue-container').classList.remove('hidden');
+            document.getElementById('story-epilogue').innerText = lvl.story.epilogue;
+
+            const footerBtn = document.getElementById('story-footer-btn');
+            footerBtn.innerText = '完成冒險 🎉';
+            footerBtn.onclick = () => {
+                closeStoryModal();
+                if (onDone) setTimeout(onDone, 300);
+            };
+            document.getElementById('story-modal').classList.add('open');
+        }
+
         function switchLevel(index) {
             if (isRunning) return;
             if (index > unlockedLevel) {
@@ -896,7 +1253,7 @@
             shipState = { x: startPos.x, y: startPos.y, dir: 0 };
             document.querySelectorAll('.lvl-btn').forEach((btn, idx) => {
                 const isLocked = idx > unlockedLevel;
-                btn.innerHTML = `第${['一', '二', '三', '四', '五', '六', '七', '八', '九'][idx]}關${isLocked ? ' 🔒' : ''}`;
+                btn.innerHTML = `第${LEVEL_NAMES[idx] || (idx + 1)}關${isLocked ? ' 🔒' : ''}`;
                 // 必須在同一行設定 className，避免覆蓋 lvl-locked
                 if (isLocked) {
                     btn.className = `lvl-btn lvl-locked px-3 py-1 rounded-full text-xs font-bold transition bg-gray-100 text-gray-400`;
@@ -911,6 +1268,7 @@
             document.getElementById('repeat-section').style.display = lvl.showRepeat ? 'block' : 'none';
 
             // 若此關有過關紀錄，載入積木且鎖定編輯
+            insertAnchor = null;
             const savedProg = levelPrograms[index];
             if (savedProg && savedProg.length > 0) {
                 program = JSON.parse(JSON.stringify(savedProg));
@@ -925,6 +1283,11 @@
 
             initBoard();
             playSfx(523);
+
+            // 自動載入故事對話
+            setTimeout(() => {
+                openStoryModal();
+            }, 300);
         }
 
         function updateCardLimits() {
@@ -946,8 +1309,9 @@
                     const hasDriftwoods = lvl.driftwoods && lvl.driftwoods.length > 0;
                     limit = hasDriftwoods ? 0 : -1;
                 } else if (type === 'wait') {
-                    // 1-8 關停用等待指令，第 9 關（索引 8）啟用且無限制
-                    limit = (currentLevelIndex === 8) ? 0 : -1;
+                    // 如果關卡有巡邏鯊魚，預設啟用且無限制(0)，否則停用(-1)
+                    const hasSharks = lvl.sharks && lvl.sharks.length > 0;
+                    limit = hasSharks ? 0 : -1;
                 } else {
                     limit = 0; // 預設啟用且無限
                 }
@@ -1008,10 +1372,8 @@
 
         const REPEAT_MAP = { 'repeat_2': 2, 'repeat_3': 3 };
 
-        function addCommand(type) {
-            if (isRunning || isProgramLocked) return;
-
-            // 檢查限制
+        // 判斷目前是否還能新增某類型指令（考量關卡限制與已使用張數）
+        function canAddCommand(type) {
             const lvl = customLevels[currentLevelIndex];
             let limit = 0;
             if (lvl.limits && lvl.limits[type] !== undefined) {
@@ -1022,16 +1384,27 @@
             } else if (type === 'wait') {
                 limit = (currentLevelIndex === 8) ? 0 : -1;
             }
-
-            if (limit === -1) return;
+            if (limit === -1) return false;
             if (limit > 0) {
                 const used = program.filter(p => p.type === type).length;
-                if (used >= limit) return;
+                if (used >= limit) return false;
             }
+            return true;
+        }
+
+        function addCommand(type) {
+            if (isRunning || isProgramLocked) return;
+            if (!canAddCommand(type)) return;
 
             const cmd = { type, wrap: 1 };
             if (type === 'repeat_custom') cmd.count = 4;
-            program.push(cmd);
+            // 若有指定插入點，插入其後；否則附加到最後
+            if (insertAnchor !== null && insertAnchor >= 0 && insertAnchor < program.length) {
+                const inserted = insertCommandAt(insertAnchor, cmd);
+                insertAnchor = inserted; // 插入點移到新積木，方便連續插入
+            } else {
+                program.push(cmd);
+            }
             renderProgram();
             updateCardLimits();
             playSfx(600, 'sine', 0.05);
@@ -1061,6 +1434,7 @@
         function clearProgram() {
             if (isRunning) return;
             program = [];
+            insertAnchor = null;
             isProgramLocked = false;
             applyProgramLockUI();
             renderProgram();
@@ -1069,6 +1443,7 @@
         function popCommand() {
             if (isRunning || isProgramLocked || program.length === 0) return;
             program.pop();
+            insertAnchor = null;
             renderProgram();
             updateCardLimits();
         }
@@ -1188,6 +1563,7 @@
                         const block = document.createElement('div');
                         block.className = 'repeat-block';
                         block.id = `repeat-block-${i}`;
+                        block.dataset.flat = i;
                         const header = document.createElement('div');
                         header.className = 'repeat-header';
                         header.id = `repeat-header-${i}`;
@@ -1208,23 +1584,31 @@
                             repeatLabel = `<span>🔁 重複 x${repCount}</span>`;
                         }
 
+                        if (i === insertAnchor) header.classList.add('insert-anchor');
                         header.innerHTML = `
                             <div class="flex items-center gap-2">
                                 <span class="step-number">${i + 1}</span>
                                 ${repeatLabel}
+                                ${i === insertAnchor ? '<span class="insert-badge">↓插入點</span>' : ''}
                                 <span id="repeat-iteration-${i}" class="repeat-iteration-badge hidden ml-2 bg-white/20 text-white text-[10px] px-1.5 py-0.5 rounded-full font-normal"></span>
                             </div>
-                            <div class="flex items-center gap-2">
-                                <span class="text-[10px] opacity-80">包裹:</span>
-                                <button onclick="changeWrap(${i}, -1)" class="w-5 h-5 bg-white/20 rounded flex items-center justify-center hover:bg-white/40">-</button>
+                            <div class="flex items-center gap-1.5">
+                                <button onclick="event.stopPropagation(); moveUnit(${i}, -1)" class="w-5 h-5 bg-white/20 rounded flex items-center justify-center hover:bg-white/40 text-xs" title="上移">▲</button>
+                                <button onclick="event.stopPropagation(); moveUnit(${i}, 1)" class="w-5 h-5 bg-white/20 rounded flex items-center justify-center hover:bg-white/40 text-xs" title="下移">▼</button>
+                                <span class="text-[10px] opacity-80 ml-1">包裹:</span>
+                                <button onclick="event.stopPropagation(); changeWrap(${i}, -1)" class="w-5 h-5 bg-white/20 rounded flex items-center justify-center hover:bg-white/40">-</button>
                                 <span class="text-sm w-4 text-center">${cmd.wrap}</span>
-                                <button onclick="changeWrap(${i}, 1)" class="w-5 h-5 bg-white/20 rounded flex items-center justify-center hover:bg-white/40">+</button>
-                                <button onclick="removeCommand(${i})" class="ml-2 text-white/50 hover:text-white">✕</button>
+                                <button onclick="event.stopPropagation(); changeWrap(${i}, 1)" class="w-5 h-5 bg-white/20 rounded flex items-center justify-center hover:bg-white/40">+</button>
+                                <button onclick="event.stopPropagation(); removeCommand(${i})" class="ml-1 text-white/50 hover:text-white">✕</button>
                             </div>
                         `;
+                        header.style.cursor = 'pointer';
+                        header.title = '點選設為插入點';
+                        header.onclick = () => setInsertAnchor(i);
                         block.appendChild(header);
                         const body = document.createElement('div');
                         body.className = 'repeat-body';
+                        body.dataset.loop = i;
                         block.appendChild(body);
                         container.appendChild(block);
                         i = renderRecursive(track, i + 1, cmd.wrap, depth + 1, body);
@@ -1234,16 +1618,25 @@
                         const cmdNames = { 'forward': '前進', 'backward': '後退', 'left': '左轉', 'right': '右轉', 'shoot': '射擊', 'wait': '等待' };
                         const cmdColors = { 'forward': 'bg-blue-600', 'backward': 'bg-blue-600', 'left': 'bg-indigo-600', 'right': 'bg-indigo-600', 'shoot': 'bg-red-600', 'wait': 'bg-slate-600' };
                         
-                        item.className = `command-card ${cmdColors[cmd.type]}`;
+                        item.className = `command-card ${cmdColors[cmd.type]}${i === insertAnchor ? ' insert-anchor' : ''}`;
                         item.id = `program-item-${i}`;
+                        item.dataset.flat = i;
                         item.innerHTML = `
                             <div class="flex items-center gap-2 overflow-hidden">
                                 <div class="step-number">${i + 1}</div>
                                 <span class="text-xl flex-shrink-0">${cmdIcons[cmd.type]}</span>
                                 <span class="whitespace-nowrap text-sm">${cmdNames[cmd.type]}</span>
+                                ${i === insertAnchor ? '<span class="insert-badge">↓插入點</span>' : ''}
                             </div>
-                            <button onclick="removeCommand(${i})" class="text-white/40 hover:text-white ml-2 text-xs flex-shrink-0">✕</button>
+                            <div class="flex items-center gap-1.5 flex-shrink-0">
+                                <button onclick="event.stopPropagation(); moveUnit(${i}, -1)" class="w-5 h-5 bg-white/20 rounded flex items-center justify-center hover:bg-white/40 text-xs" title="上移">▲</button>
+                                <button onclick="event.stopPropagation(); moveUnit(${i}, 1)" class="w-5 h-5 bg-white/20 rounded flex items-center justify-center hover:bg-white/40 text-xs" title="下移">▼</button>
+                                <button onclick="event.stopPropagation(); removeCommand(${i})" class="text-white/40 hover:text-white ml-1 text-xs">✕</button>
+                            </div>
                         `;
+                        item.style.cursor = 'pointer';
+                        item.title = '點選設為插入點';
+                        item.onclick = () => setInsertAnchor(i);
                         container.appendChild(item);
                         i++;
                     }
@@ -1253,14 +1646,236 @@
             }
 
             renderRecursive(program, 0, Infinity, 0, list);
-            list.scrollTop = list.scrollHeight;
+
+            const hint = document.getElementById('insert-hint');
+            if (hint) {
+                if (insertAnchor !== null && insertAnchor < program.length) {
+                    hint.innerHTML = `📍 插入點已設定：新指令會插入第 <b>${insertAnchor + 1}</b> 個積木之後（再點一次該積木可取消）。`;
+                    hint.className = 'text-[11px] text-amber-600 font-bold mb-1 px-1';
+                } else {
+                    hint.innerHTML = '💡 點選積木可設為「插入點」，新指令會插入其後；用 ▲▼ 移動積木。';
+                    hint.className = 'text-[11px] text-slate-400 mb-1 px-1';
+                }
+            }
+            if (insertAnchor === null) list.scrollTop = list.scrollHeight;
         }
 
         function removeCommand(index) {
             if (isRunning || isProgramLocked) return;
-            program.splice(index, 1);
+            // 移除整個單元（重複塊連同其包裹的內容一起刪除）
+            const span = unitSpan(program, index);
+            // 最內層包住此單元的迴圈少包一格，避免把後面的指令誤吸進迴圈
+            const encl = enclosingRepeats(program, index);
+            if (encl.length) {
+                const inner = encl[encl.length - 1];
+                program[inner].wrap = Math.max(0, (program[inner].wrap || 0) - 1);
+            }
+            program.splice(index, span);
+            insertAnchor = null;
             renderProgram();
             updateCardLimits();
+        }
+
+        // ===== 積木插入與移動：共用輔助 =====
+        function isRepeatCmd(cmd) {
+            return cmd && (REPEAT_MAP[cmd.type] || cmd.type === 'repeat_custom');
+        }
+
+        // 計算自 index 起一個「單元」的長度（重複卡會含其巢狀包裹的內容）
+        function unitSpan(arr, i) {
+            const cmd = arr[i];
+            if (!cmd) return 0;
+            if (!isRepeatCmd(cmd)) return 1;
+            let total = 1, idx = i + 1;
+            for (let c = 0; c < (cmd.wrap || 0) && idx < arr.length; c++) {
+                const s = unitSpan(arr, idx);
+                total += s; idx += s;
+            }
+            return total;
+        }
+
+        // 找出 target 所在那一層的所有同層單元起始索引與其位置
+        function siblingNav(arr, target) {
+            let result = null;
+            function dfs(start, count) {
+                let idx = start, n = 0;
+                const siblings = [], childCalls = [];
+                while (n < count && idx < arr.length) {
+                    siblings.push(idx);
+                    if (isRepeatCmd(arr[idx])) childCalls.push([idx + 1, arr[idx].wrap || 0]);
+                    idx += unitSpan(arr, idx); n++;
+                }
+                const pos = siblings.indexOf(target);
+                if (pos !== -1) { result = { siblings, pos }; return; }
+                for (const [cs, cc] of childCalls) { if (!result) dfs(cs, cc); }
+            }
+            dfs(0, arr.length);
+            return result;
+        }
+
+        // 找出 body 包住 pos 的所有重複卡索引（由外而內）
+        function enclosingRepeats(arr, pos) {
+            const result = [];
+            function dfs(start, count) {
+                let idx = start, n = 0;
+                while (n < count && idx < arr.length) {
+                    const cmd = arr[idx];
+                    const span = unitSpan(arr, idx);
+                    if (isRepeatCmd(cmd)) {
+                        const bodyStart = idx + 1, bodyEnd = idx + span;
+                        if (pos >= bodyStart && pos < bodyEnd) {
+                            result.push(idx);
+                            dfs(bodyStart, cmd.wrap || 0);
+                        }
+                    }
+                    idx += span; n++;
+                }
+            }
+            dfs(0, arr.length);
+            return result;
+        }
+
+        // 將指令插入到 anchorIdx 積木之後（重複卡標頭則插入於整塊之後），回傳新積木索引
+        function insertCommandAt(anchorIdx, cmd) {
+            const a = program[anchorIdx];
+            let insertPos;
+            if (isRepeatCmd(a)) {
+                insertPos = anchorIdx + unitSpan(program, anchorIdx);
+            } else {
+                insertPos = anchorIdx + 1;
+            }
+            // 讓「最內層」包住此位置的迴圈多包一格，使新積木留在迴圈內（外層迴圈仍把內層整塊算 1 單元，不需調整）
+            const encl = enclosingRepeats(program, anchorIdx);
+            if (encl.length) {
+                const inner = encl[encl.length - 1];
+                program[inner].wrap = (program[inner].wrap || 0) + 1;
+            }
+            program.splice(insertPos, 0, cmd);
+            return insertPos;
+        }
+
+        // 點選積木設定/取消插入點
+        function setInsertAnchor(i) {
+            if (isRunning || isProgramLocked) return;
+            insertAnchor = (insertAnchor === i) ? null : i;
+            renderProgram();
+            playSfx(500, 'sine', 0.03);
+        }
+
+        // 以「單元」為單位在同層內上下移動
+        function moveUnit(i, dir) {
+            if (isRunning || isProgramLocked) return;
+            const nav = siblingNav(program, i);
+            if (!nav) return;
+            const { siblings, pos } = nav;
+            const span = unitSpan(program, i);
+            if (dir < 0 && pos > 0) {
+                const prev = siblings[pos - 1];
+                const block = program.splice(i, span);
+                program.splice(prev, 0, ...block);
+            } else if (dir > 0 && pos < siblings.length - 1) {
+                const block = program.splice(i, span);
+                const t = unitSpan(program, i); // 移除後，下一個單元現在位於 i
+                program.splice(i + t, 0, ...block);
+            } else {
+                return;
+            }
+            insertAnchor = null;
+            renderProgram();
+            updateCardLimits();
+            playSfx(700, 'sine', 0.03);
+        }
+
+        // ===== 拖放：從卡片區拖曳指令到程式序列並插入指定位置 =====
+        let draggedType = null;
+
+        function setupPaletteDrag() {
+            const types = ['forward', 'backward', 'left', 'right', 'wait', 'shoot', 'repeat_2', 'repeat_3', 'repeat_custom'];
+            types.forEach(type => {
+                const btn = document.getElementById(`btn-${type}`);
+                if (!btn || btn.dataset.dndReady) return;
+                btn.dataset.dndReady = '1';
+                btn.setAttribute('draggable', 'true');
+                btn.addEventListener('dragstart', (e) => {
+                    if (isRunning || isProgramLocked || !canAddCommand(type)) { e.preventDefault(); return; }
+                    draggedType = type;
+                    e.dataTransfer.effectAllowed = 'copy';
+                    try { e.dataTransfer.setData('text/plain', type); } catch (_) {}
+                });
+                btn.addEventListener('dragend', () => { draggedType = null; clearDropIndicator(); });
+            });
+        }
+
+        function clearDropIndicator() {
+            document.querySelectorAll('.drop-indicator').forEach(el => el.remove());
+        }
+
+        function getDropContainer(target) {
+            const list = document.getElementById('program-list');
+            let el = target;
+            while (el && el !== list) {
+                if (el.classList && el.classList.contains('repeat-body')) return el;
+                el = el.parentElement;
+            }
+            return list;
+        }
+
+        // 依游標位置算出投放點：{ container, beforeEl, flatPos, loopIdx }
+        function computeDrop(clientY, target) {
+            const list = document.getElementById('program-list');
+            const container = getDropContainer(target);
+            const units = [...container.children].filter(c => c.classList && (c.classList.contains('command-card') || c.classList.contains('repeat-block')));
+            let beforeEl = null;
+            for (const u of units) {
+                const r = u.getBoundingClientRect();
+                if (clientY < r.top + r.height / 2) { beforeEl = u; break; }
+            }
+            const loopIdx = (container !== list && container.dataset.loop !== undefined) ? parseInt(container.dataset.loop) : null;
+            let flatPos;
+            if (beforeEl) flatPos = parseInt(beforeEl.dataset.flat);
+            else if (loopIdx === null) flatPos = program.length;
+            else flatPos = loopIdx + unitSpan(program, loopIdx);
+            return { container, beforeEl, flatPos, loopIdx };
+        }
+
+        function setupProgramDnD() {
+            const list = document.getElementById('program-list');
+            if (!list || list.dataset.dndReady) return;
+            list.dataset.dndReady = '1';
+
+            list.addEventListener('dragover', (e) => {
+                if (!draggedType || isRunning || isProgramLocked) return;
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'copy';
+                clearDropIndicator();
+                const { container, beforeEl } = computeDrop(e.clientY, e.target);
+                const ind = document.createElement('div');
+                ind.className = 'drop-indicator';
+                if (beforeEl) container.insertBefore(ind, beforeEl);
+                else container.appendChild(ind);
+            });
+
+            list.addEventListener('dragleave', (e) => {
+                if (e.target === list && !list.contains(e.relatedTarget)) clearDropIndicator();
+            });
+
+            list.addEventListener('drop', (e) => {
+                if (!draggedType || isRunning || isProgramLocked) { clearDropIndicator(); return; }
+                e.preventDefault();
+                const type = draggedType;
+                clearDropIndicator();
+                const { flatPos, loopIdx } = computeDrop(e.clientY, e.target);
+                draggedType = null;
+                if (!canAddCommand(type)) return;
+                const cmd = { type, wrap: 1 };
+                if (type === 'repeat_custom') cmd.count = 4;
+                program.splice(flatPos, 0, cmd);
+                if (loopIdx !== null) program[loopIdx].wrap = (program[loopIdx].wrap || 0) + 1;
+                insertAnchor = null;
+                renderProgram();
+                updateCardLimits();
+                playSfx(650, 'sine', 0.05);
+            });
         }
 
         function resetExecutionState() {
@@ -1461,13 +2076,14 @@
                             winStatus = 'fail'; break;
                         }
 
-                        if (lvl.portals) {
-                            const p = lvl.portals.find(p => p.x === shipState.x && p.y === shipState.y);
+                        if (lvl.portals && (step.commandType === 'forward' || step.commandType === 'backward')) {
+                            const currentPortal = lvl.portals.find(p => p.x === shipState.x && p.y === shipState.y);
+                            const p = currentPortal && lvl.portals.find(o => o.color === currentPortal.color && (o.x !== shipState.x || o.y !== shipState.y));
                             if (p) {
                                 const shipEntity = document.getElementById('ship-entity');
                                 if (shipEntity) shipEntity.classList.add('teleport-in');
                                 await playAudio('transin.mp3');
-                                shipState.x = p.targetX; shipState.y = p.targetY;
+                                shipState.x = p.x; shipState.y = p.y;
                                 updateShipPosition();
                                 const newShipEntity = document.getElementById('ship-entity');
                                 if (newShipEntity) newShipEntity.classList.add('teleport-out');
@@ -1535,7 +2151,12 @@
                     isGameCleared = true; localStorage.setItem('pirate_game_cleared', 'true');
                     document.getElementById('master-badge').classList.remove('hidden');
                     launchCelebration();
-                    showModal('🌟 傳奇航海家！', `恭喜你完成了所有挑戰！\n完成時間：${finalTime}`, '👑', '重新挑戰', true);
+                    isRunning = false;
+                    runBtn.innerText = '🚀 開始航行';
+                    runBtn.className = 'mt-4 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-2xl shadow-lg transition active:scale-95 text-lg';
+                    // 先播放終章結局劇情，閱讀完畢後再顯示傳奇航海家慶祝視窗
+                    openEpilogueModal(() => showModal('🌟 傳奇航海家！', `恭喜你完成了所有挑戰！\n完成時間：${finalTime}`, '👑', '重新挑戰', true));
+                    return;
                 } else showModal('🏆 任務達成！', `你成功的抵達了終點！\n完成時間：${finalTime}`, '💰', '進入下一關', true);
             } else if (winStatus === 'no-key') {
                 playSfx(200, 'sine', 0.3, 0.05);
@@ -1668,26 +2289,76 @@
 
         async function performShoot() {
             const { x, y, dir } = shipState;
-            const tx = x + [0, 1, 0, -1][dir], ty = y + [-1, 0, 1, 0][dir];
-            await playAudio('laser.mp3');
-            const bullet = document.createElement('div'); bullet.innerHTML = '☄️';
-            bullet.className = 'absolute z-[60] transition-all duration-300 text-xl';
-            const cell = document.getElementById(`cell-${x}-${y}`); if (cell) cell.appendChild(bullet);
-            await sleep(50);
-            const tCell = document.getElementById(`cell-${tx}-${ty}`);
-            if (tCell) {
-                const r = tCell.getBoundingClientRect(), sr = cell.getBoundingClientRect();
-                bullet.style.transform = `translate(${r.left - sr.left}px, ${r.top - sr.top}px)`;
-            } else bullet.style.opacity = '0';
-            await sleep(300); bullet.remove();
+            const dx = [0, 1, 0, -1][dir], dy = [-1, 0, 1, 0][dir];
+            const tx = x + dx, ty = y + dy;
+            const board = document.getElementById('game-board');
+            const boardRect = board.getBoundingClientRect();
+            const srcCell = board.children[y * GRID_SIZE + x];
+            if (!srcCell) return;
+            const sRect = srcCell.getBoundingClientRect();
+            const startX = sRect.left - boardRect.left;
+            const startY = sRect.top - boardRect.top;
+            const inBounds = tx >= 0 && tx < GRID_SIZE && ty >= 0 && ty < GRID_SIZE;
+            const tgtCell = inBounds ? board.children[ty * GRID_SIZE + tx] : null;
+
+            const place = (el) => {
+                el.style.left = `${startX}px`;
+                el.style.top = `${startY}px`;
+                el.style.width = `${sRect.width}px`;
+                el.style.height = `${sRect.height}px`;
+            };
+
+            playAudio('laser.mp3');
+
+            // 砲口閃光
+            const flash = document.createElement('div');
+            flash.className = 'shoot-muzzle';
+            place(flash);
+            board.appendChild(flash);
+            setTimeout(() => flash.remove(), 360);
+
+            // 旋轉飛行的炸彈
+            const proj = document.createElement('div');
+            proj.className = 'shoot-projectile';
+            proj.innerHTML = '<span class="bomb-emoji">💣</span>';
+            place(proj);
+            board.appendChild(proj);
+
+            await sleep(40);
+            let endX = startX, endY = startY;
+            if (tgtCell) {
+                const tRect = tgtCell.getBoundingClientRect();
+                endX = tRect.left - boardRect.left;
+                endY = tRect.top - boardRect.top;
+            } else {
+                endX = startX + dx * sRect.width;
+                endY = startY + dy * sRect.height;
+            }
+            proj.style.transform = `translate(${endX - startX}px, ${endY - startY}px)`;
+            await sleep(280);
+            proj.remove();
+
+            // 命中點爆炸 + 棋盤震動
+            const boom = document.createElement('div');
+            boom.className = 'shoot-explosion';
+            boom.innerHTML = '💥';
+            boom.style.left = `${endX}px`;
+            boom.style.top = `${endY}px`;
+            boom.style.width = `${sRect.width}px`;
+            boom.style.height = `${sRect.height}px`;
+            board.appendChild(boom);
+            board.classList.add('board-shake');
+            playAudio('bomb.mp3');
+            setTimeout(() => board.classList.remove('board-shake'), 420);
+
             const dIdx = activeDriftwoods.findIndex(d => d.x === tx && d.y === ty);
             if (dIdx !== -1) {
                 activeDriftwoods.splice(dIdx, 1);
                 const obj = document.getElementById(`obj-${tx}-${ty}`);
-                const exp = document.createElement('div'); exp.className = 'text-3xl absolute animate-ping'; exp.innerHTML = '💥';
-                if (obj) obj.appendChild(exp); await playAudio('bomb.mp3');
-                if (obj) { obj.innerHTML = ''; exp.remove(); }
+                if (obj) obj.innerHTML = '';
             }
+            await sleep(420);
+            boom.remove();
         }
 
         // ============================================================
@@ -1696,7 +2367,7 @@
 
         const CMD_SHORT = { forward:'F', backward:'B', left:'L', right:'R', shoot:'S', wait:'W', repeat_2:'R2', repeat_3:'R3', repeat_custom:'RN' };
         const CMD_LONG  = { F:'forward', B:'backward', L:'left', R:'right', S:'shoot', W:'wait', R2:'repeat_2', R3:'repeat_3' };
-        const LEVEL_NAMES = ['一','二','三','四','五','六','七','八','九'];
+        const LEVEL_NAMES = ['一','二','三','四','五','六','七','八','九','十','十一','十二','十三','十四','十五','十六','十七','十八','十九','二十'];
 
         /** 將 program 陣列序列化為精簡字串，如 "F,L,R2,F,B" */
         function serializeProgram(prog) {
@@ -1931,6 +2602,9 @@
         document.getElementById('progress-modal').addEventListener('click', function(e) {
             if (e.target === this) closeProgressModal();
         });
+        document.getElementById('story-modal').addEventListener('click', function(e) {
+            if (e.target === this) closeStoryModal();
+        });
 
         window.onload = () => {
             if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -1976,6 +2650,9 @@
             document.getElementById('input-class').value = studentClass;
             document.getElementById('input-seat').value  = studentSeat;
             applyStudentLockUI();
+            initLevelNav();
+            setupPaletteDrag();
+            setupProgramDnD();
             switchLevel(currentLevelIndex);
         };
 

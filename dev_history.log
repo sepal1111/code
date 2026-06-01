@@ -1,3 +1,323 @@
+## [2026-06-01 21:45:00] - 新增首次進入網站的電影感情境引導故事（航海尋寶主題）
+
+*   **使用者提示詞 / 需求 (User Prompt):**
+    > 進到網站後會直接顯示闖關，請加入當第一次進入網站時，必須要有情境引導故事，讓整個網站更吸引人，請給我幾個情境的類型讓我挑選。（使用者選擇：航海尋寶（延續現有））
+
+*   **實作策略與動機 (Implementation Strategy):**
+    *   以 AskUserQuestion 提供 4 種情境主題（航海尋寶/星際探險/魔法學院/機器人覺醒），使用者選擇延續現有的「航海尋寶」世界觀，與既有 10 關故事及首頁海洋風完全一致、無須改動關卡劇本。
+    *   入口為 `index.html`（選船 → adventure.html）。在 `index.html` 加入全螢幕電影感情境引導 `#intro-overlay`，於首頁載入時若 `localStorage['pirate_intro_seen']` 未設定即自動播放，內容為 4 幕敘事（編程之海與運算神殿傳說 → 神秘海圖召喚 → 登上編程之星與夥伴羅盤 → 運算思維號召），逐幕點「下一步」推進，最後一幕以「⚓ 登船出發！」結束。
+    *   提供「跳過」按鈕；完成或跳過後寫入 `pirate_intro_seen` 旗標，之後不再自動播放。並在首頁加入「✨ 重看開場故事」連結可隨時重播。磨砂玻璃卡片、淡入與進度圓點等增強沉浸感。
+
+*   **受影響檔案與變更 (Files Affected & Actions):**
+    *   `[MODIFIED]` `index.html`: 新增情境引導樣式、`#intro-overlay` 元件與 4 幕腳本、`showIntro/nextScene/finishIntro/replayIntro` 等邏輯，於 `window.onload` 依旗標自動播放；新增「重看開場故事」連結。
+    *   `[MODIFIED]` `dev_history.log`: 於最上方追加本條紀錄。
+
+*   **目前狀態 (Current Status):** 已完成 Completed
+
+## [2026-06-01 21:30:00] - 新增「從卡片區拖曳指令到程式序列並插入指定位置」功能
+
+*   **使用者提示詞 / 需求 (User Prompt):**
+    > 加入從指令卡片重複卡片區直接拖曳到程式序列中的功能，並且可以插入現有的程式序列中
+
+*   **實作策略與動機 (Implementation Strategy):**
+    *   先修正前一版插入/移除時 wrap 調整的巢狀錯誤：插入或移除迴圈內的單元時，原本對「所有」外圍迴圈都加減 wrap，但外層迴圈把內層整塊視為 1 個單元、數量不變，應只調整「最內層」包住該位置的迴圈。改為僅調整 `enclosingRepeats()` 的最後一項（最內層）。
+    *   抽出 `canAddCommand(type)` 共用限制判斷供點擊新增與拖放共用。
+    *   HTML5 拖放：
+        1. 指令卡與重複卡（`#btn-*`）於載入時設為 `draggable`，`dragstart` 記錄欲新增的指令類型 `draggedType`。
+        2. 渲染程式積木時加上 `data-flat`（command-card 與 repeat-block）與 `data-loop`（repeat-body 容器標記其所屬迴圈 flat index），並給空的 repeat-body 最小高度便於投放。
+        3. `program-list` 監聽 `dragover/drop/dragleave`：依游標位置找出所在「容器」（最近的 `.repeat-body` 或清單根）與插入點，顯示橘色投放指示線；放開時將指令插入該扁平位置，若落在迴圈容器內則該迴圈 wrap +1，精準插入到現有序列（含迴圈內部）的任意位置。
+    *   `adventure.html` 與 `custom.html` 兩處程式 UI 同步實作。
+
+*   **受影響檔案與變更 (Files Affected & Actions):**
+    *   `[MODIFIED]` `adventure.html`: 修正 wrap 巢狀調整為最內層；抽出 `canAddCommand`；新增拖放（setupPaletteDrag、dragover/drop 處理、drop-indicator）、渲染 data 屬性與相關 CSS。
+    *   `[MODIFIED]` `custom.html`: 同步實作。
+    *   `[MODIFIED]` `dev_history.log`: 於最上方追加本條紀錄。
+
+*   **目前狀態 (Current Status):** 已完成 Completed
+
+## [2026-06-01 21:10:00] - 為程式序列新增「插入指定位置」與「上下移動積木」功能
+
+*   **使用者提示詞 / 需求 (User Prompt):**
+    > 當程式累積越來越多時，只要中間有個步驟出錯，修改時會導致必須刪除大量已經安排好的程式，希望可以增加插入與移動程式積木的功能
+
+*   **實作策略與動機 (Implementation Strategy):**
+    *   程式資料為扁平陣列 `program`，重複卡以 `wrap` 表示「包裹其後幾個單元」，巢狀靠連續位置與 wrap 數隱含表示。
+    *   新增輔助函式：`unitSpan()`（計算一個單元含巢狀子積木的長度）、`siblingNav()`（找出同層的相鄰單元）、`enclosingRepeats()`（找出包住某位置的所有重複卡）。
+    *   **移動**：每個積木（含重複塊）新增 ▲▼ 按鈕，呼叫 `moveUnit(i, dir)`，以「整個單元」為單位在同層內與相鄰單元對調（重複塊連同其內容一起搬移）。因屬同層對調，父層單元數不變，wrap 數無須調整，行為可預期。
+    *   **插入**：點選任一積木設為「插入點」（再點一次取消），新增指令時 `addCommand()` 改為插入於該積木之後；若插入點位於迴圈內，`insertCommandAt()` 會自動將外圍重複卡的 wrap +1，使新積木留在迴圈內；點重複卡標頭則插入於整個重複塊之後。插入後插入點自動移到新積木，方便連續插入。未選插入點時維持附加到最後。
+    *   渲染強化：被選為插入點的積木加上橘色外框與「↓ 插入點」標示，並於清單上方顯示操作提示；切換關卡、清除、復原、刪除、移動後皆重置插入點以避免索引失效。`adventure.html` 與 `custom.html` 兩處程式 UI 同步實作。
+
+*   **受影響檔案與變更 (Files Affected & Actions):**
+    *   `[MODIFIED]` `adventure.html`: 新增 insertAnchor 狀態、`unitSpan`/`siblingNav`/`enclosingRepeats`/`moveUnit`/`setInsertAnchor`/`insertCommandAt`；改寫 `addCommand`/`renderProgram`；新增插入點 CSS 與提示元素；於 clear/pop/remove/switchLevel 重置插入點。
+    *   `[MODIFIED]` `custom.html`: 同步實作相同的插入與移動功能。
+    *   `[MODIFIED]` `dev_history.log`: 於最上方追加本條紀錄。
+
+*   **目前狀態 (Current Status):** 已完成 Completed
+
+## [2026-06-01 20:50:00] - 新增第十關（運算神殿終極試煉）並移轉結局、修正多色傳送門渲染
+
+*   **使用者提示詞 / 需求 (User Prompt):**
+    > 增加第十關，地圖代碼：（Base64）。使用到所有的地形與指令。
+
+*   **實作策略與動機 (Implementation Strategy):**
+    *   解碼地圖：12x12，起點 (0,11)、終點 (7,8)、金鑰 (4,1)；含礁石迷宮、漂流浮木 3、垃圾島 2、巡邏鯊魚 2、三色傳送門（綠/紫/藍各一對）；限制 `forward:10, backward:5, left:5, right:5, shoot:3, wait:3, repeat_2/3/custom 各 4`、`showRepeat:true`。集結所有地形與所有指令，作為全系列的終極大關。
+    *   在 `levels.js` 末尾新增第十關物件，採用解碼之完整地圖資料，並撰寫「運算神殿的終極試煉」故事（綜合應用／問題分解的運算思維），保留角色延續性。
+    *   結局移轉：遊戲通關判定以「最後一關」是否含 `story.epilogue` 為準。因第十關成為新的最終關，將原本掛在第九關的 `epilogue`（抵達運算神殿的終章）移至第十關並改寫為呼應終極試煉完成；同步移除第九關的 epilogue，並把第九關 desc/concept 中「最終試煉」的措辭改回聚焦於併發時序、並加一句承接下一關的引導。
+    *   修正多色傳送門渲染：`adventure.html` 的 `renderCellObject` 原本對所有傳送門硬寫 🟣，無法分辨第十關的綠/紫/藍三對傳送門。改為依 `color` 對應 `{ purple:🟣, green:🟢, blue:🔵 }`（比照 `custom.html`）。
+
+*   **受影響檔案與變更 (Files Affected & Actions):**
+    *   `[MODIFIED]` `levels.js`: 新增第十關（地圖＋故事＋結局 epilogue）；第九關移除 epilogue 並調整 desc/concept。
+    *   `[MODIFIED]` `adventure.html`: 傳送門渲染改為依顏色顯示對應圖示。
+    *   `[MODIFIED]` `dev_history.log`: 於最上方追加本條紀錄。
+
+*   **目前狀態 (Current Status):** 已完成 Completed
+
+## [2026-06-01 20:35:00] - 將「匯入地圖代碼」功能提升至頂部工具列並強化相容性
+
+*   **使用者提示詞 / 需求 (User Prompt):**
+    > 在地圖編輯器中，加入匯入地圖代碼的功能，讓我可以修改已經存在的地圖
+
+*   **實作策略與動機 (Implementation Strategy):**
+    *   檢查發現：匯入地圖代碼功能其實已存在（`importMapPrompt()` / `confirmImport()` 與匯入彈窗），可解碼 Base64、驗證後載入 `mapData` 並重繪編輯器。但「📥 匯入地圖代碼」按鈕被放在側邊「我的地圖庫」面板最底部、且為 `text-xs` 小字，可發現性極低；相對地「匯出地圖」按鈕位於頂部工具列。使用者因此感覺缺少匯入功能。
+    *   解法：在頂部工具列「匯出地圖」旁新增顯眼的「📥 匯入地圖」按鈕（呼叫既有的 `importMapPrompt()`），讓貼上代碼修改既有地圖的入口一目了然。側邊既有按鈕保留不動。
+    *   順手強化 `confirmImport()` 的相容性補齊：除原有的 trashIslands/sharks/limits/showRepeat 外，補上 obstacles/driftwoods/portals/keyPos 的預設值，避免匯入缺少這些欄位的代碼時造成後續渲染或點擊操作出錯。
+
+*   **受影響檔案與變更 (Files Affected & Actions):**
+    *   `[MODIFIED]` `editor.html`: 頂部工具列新增「📥 匯入地圖」按鈕；`confirmImport()` 增補相容性欄位預設。
+    *   `[MODIFIED]` `dev_history.log`: 於最上方追加本條紀錄。
+
+*   **目前狀態 (Current Status):** 已完成 Completed
+
+## [2026-06-01 20:25:00] - 修正地圖編輯器「開始測試」後返回會清空未儲存編輯的問題
+
+*   **使用者提示詞 / 需求 (User Prompt):**
+    > 在地圖編輯模式中，當選擇開始測試，可以測試設計好的地圖，但是一旦返回地圖編輯模式，原先編輯的地圖會被清空，除非有先儲存記錄
+
+*   **實作策略與動機 (Implementation Strategy):**
+    *   原因：`editor.html` 的 `launchCustomGame()` 僅把地圖寫入 `pirate_custom_map` 供 `custom.html` 測試，並未保留「編輯器當前草稿」；返回編輯器時 `window.onload → initEditor()` 會以預設空白 `mapData` 重新初始化，導致未存檔的編輯內容遺失。
+    *   解法：新增獨立的草稿鍵 `pirate_editor_draft`。
+        1. 新增 `saveDraft()`：同步當前 `gridSize` 與名稱/說明輸入框後，將 `mapData` 序列化存入 `pirate_editor_draft`。
+        2. 新增 `restoreDraft()`（比照匯入地圖的還原流程）：載入草稿、補齊相容欄位，並還原 `gridSize`、名稱、說明、尺寸滑桿 UI。
+        3. `window.onload` 先呼叫 `restoreDraft()` 再 `initEditor()`，使返回編輯器時自動還原。
+        4. `launchCustomGame()` 進入測試前先 `saveDraft()`；並改以 `mapData` 的深拷貝套用測試用預設名稱/說明寫入 `pirate_custom_map`，避免污染草稿的名稱欄位。
+        5. 另加 `beforeunload` 監聽呼叫 `saveDraft()`，使任何離開編輯器（非僅測試）也能保留草稿、兜底防止編輯遺失。
+
+*   **受影響檔案與變更 (Files Affected & Actions):**
+    *   `[MODIFIED]` `editor.html`: 新增 `saveDraft()`／`restoreDraft()`；調整 `window.onload` 與 `launchCustomGame()`；新增 `beforeunload` 草稿保存。
+    *   `[MODIFIED]` `dev_history.log`: 於最上方追加本條紀錄。
+
+*   **目前狀態 (Current Status):** 已完成 Completed
+
+## [2026-06-01 20:15:00] - [Self-Correction / Bugfix] 修正在漩渦上旋轉/等待會重複被傳送的問題
+
+*   **使用者提示詞 / 需求 (User Prompt):**
+    > 在漩渦上做旋轉的指令不會再被吸入
+
+*   **實作策略與動機 (Implementation Strategy):**
+    *   原本 `runProgram()` 的傳送門判定放在「非射擊」指令的共用分支內，因此當船隻已停在漩渦（傳送門）格上，再執行『左轉/右轉/等待』等不改變座標的指令時，仍會偵測到當前格為傳送門而再次觸發傳送，造成「在漩渦上旋轉就被吸走」的非預期行為。
+    *   修正邏輯：傳送只應在「移動踏上漩渦」時發生。將傳送門判定加上條件限制，僅於 `commandType` 為 `forward` 或 `backward`（會改變座標的移動指令）時才觸發；旋轉、等待、射擊皆不再重複傳送。
+    *   同步修正 `adventure.html` 與 `custom.html` 兩處相同邏輯，確保闖關模式與自訂挑戰模式行為一致。
+
+*   **受影響檔案與變更 (Files Affected & Actions):**
+    *   `[MODIFIED]` `adventure.html`: `runProgram()` 傳送門判定加上 `commandType` 為 forward/backward 的條件。
+    *   `[MODIFIED]` `custom.html`: 同上修正。
+    *   `[MODIFIED]` `dev_history.log`: 於最上方追加本條紀錄。
+
+*   **目前狀態 (Current Status):** 已完成 Completed
+
+## [2026-06-01 20:05:00] - 依地圖代碼更新第九關（綜合最終試煉）並驗證鯊魚時序可解
+
+*   **使用者提示詞 / 需求 (User Prompt):**
+    > 第九關地圖改為這樣：（Base64 地圖代碼）
+
+*   **實作策略與動機 (Implementation Strategy):**
+    *   解碼地圖：9x9、起點 (4,8)、終點 (4,0)；兩側 x=2/x=6 於奇數列 (1,3,5,7) 設礁石、x=3/x=5 於 (2)(6) 列設浮木，中央 x=4 走廊全淨空；鯊魚沿整列 y=4（x0↔x8）來回巡邏，初始 (0,4) 向右。限制 `forward:5, left:2, right:2, shoot:1, wait:1, repeat_2:1, repeat_3:1, repeat_custom:-1`、`showRepeat:true`。
+    *   更新第九關地圖欄位（obstacles / driftwoods / sharks / limits / showRepeat）為解碼資料；保留關卡名稱、對話劇本與先前新增的 `epilogue` 終章結局；輕度強化 `desc` 與 `concept`，定位為「最終綜合試煉」：需同時運用等待（時序）、重複與（可選）射擊。
+    *   以模擬器複刻遊戲「同時移動（船動→鯊魚動→一次性碰撞）」模型驗證：純直線 F×8 會在第 4 拍與鯊魚同格被咬（鯊魚第 4 拍恰好移動到 x=4）；先放 1 張等待錯開節奏，再前進 8 步（中央走廊淨空）即可安全抵達終點。8 步前進可用 forward:5 卡 + repeat_2(=2) + repeat_3(=3) 組出，加 wait:1，全部在上限內。
+
+*   **受影響檔案與變更 (Files Affected & Actions):**
+    *   `[MODIFIED]` `levels.js`: 第九關更新 obstacles（改為 x=2/6 的鋸齒礁石）、driftwoods（新增 4 處）、sharks（巡邏範圍改為整列 x0–x8）、limits（forward:6→5、新增 shoot:1、wait:0→1、repeat_2/3:-1→1）、showRepeat:false→true；輕度更新 desc 與 concept，保留 dialogue 與 epilogue。
+    *   `[MODIFIED]` `dev_history.log`: 於最上方追加本條紀錄。
+
+*   **目前狀態 (Current Status):** 已完成 Completed
+
+## [2026-06-01 19:55:00] - 為第七、八關加入重複指令並視情況調整前進/轉彎張數
+
+*   **使用者提示詞 / 需求 (User Prompt):**
+    > 第七關、第八關都增加重複的指令，重複2次 2張、重複3次 2張、自動次數1張，前進與轉彎的張數則視情況調整
+
+*   **實作策略與動機 (Implementation Strategy):**
+    *   依需求為第七、八關設定重複卡：`repeat_2:2, repeat_3:2, repeat_custom:1`，並確保 `showRepeat:true`。
+    *   第七關（直線 8 格、浮木於 (4,4)、需射擊清除）：原 `forward:8` 足以純前進通關、重複卡形同虛設；為讓重複真正派上用場，將 `forward` 降為 4（8 步分兩段 3+5，純前進不足，必須以重複放大）。左右轉維持停用（直線航道）、`shoot:1`。
+    *   第八關（繞開垃圾島 3×3 臭氣禁區）：保留 `left:3, right:3`，`forward` 由 5 提高為 6 給予少許餘裕（路徑約需 12 步、5 個前進卡段，純前進 6<12 仍不足，必須使用重複），並啟用 `showRepeat:true`。
+    *   以模擬器（含臭氣 Chebyshev≤1 的 3×3 禁區與浮木射擊判定）驗證兩關皆可通關：第七關 F×3→射擊→F×5；第八關 F×2→左轉→F×2→右轉→F×6→右轉→F×2，所需卡片數量皆在新上限內。
+
+*   **受影響檔案與變更 (Files Affected & Actions):**
+    *   `[MODIFIED]` `levels.js`: 第七關 `forward:8→4`、`repeat_2:-1→2`、`repeat_3:-1→2`、`repeat_custom:-1→1`；第八關 `forward:5→6`、`repeat_2:-1→2`、`repeat_3:-1→2`、`repeat_custom:1`、`showRepeat:false→true`。
+    *   `[MODIFIED]` `dev_history.log`: 於最上方追加本條紀錄。
+
+*   **目前狀態 (Current Status):** 已完成 Completed
+
+## [2026-06-01 19:45:00] - 修正並強化發射炸彈（射擊）動畫效果
+
+*   **使用者提示詞 / 需求 (User Prompt):**
+    > 發射炸彈時要有動畫效果
+
+*   **實作策略與動機 (Implementation Strategy):**
+    *   發現 Bug：`adventure.html` 的 `initBoard()` 建立格子時並未設定 `cell-${x}-${y}` 的 id，但 `performShoot()` 卻以 `document.getElementById(\`cell-${x}-${y}\`)` 取得來源/目標格來掛載飛行彈體，結果恆為 null，導致飛行彈體從未被加入畫面——發射時幾乎看不到動畫（僅命中浮木時一閃 💥）。另外 `.grid-cell` 設有 `overflow:hidden`，即使掛上彈體也會在飛出格子時被裁切。
+    *   解法：重寫 `performShoot()`，改將動畫元素掛載到 `#game-board`（grid 容器、`position:relative`，內部移動不會被格子裁切），以 `board.children[y*GRID_SIZE+x]` 取得來源/目標格並用 `getBoundingClientRect` 計算相對位移做平移動畫。
+    *   強化動畫：① 砲口閃光（muzzle flash 放射狀光暈）；② 旋轉飛行的炸彈 💣（cubic-bezier 平移）；③ 命中點爆炸 💥（scale/opacity 爆裂）；④ 整個棋盤短暫震動（board-shake）。無論是否命中浮木皆會播放發射＋爆炸動畫，提供明確操作回饋；命中浮木時才清除該浮木。音效改為與動畫並行（不再 await 整段音檔）以維持節奏流暢。
+    *   同步將相同的強化動畫套用至 `custom.html`（其原本動畫雖能掛載但同樣會被格子 `overflow:hidden` 裁切），確保闖關模式與自訂挑戰模式行為一致。
+
+*   **受影響檔案與變更 (Files Affected & Actions):**
+    *   `[MODIFIED]` `adventure.html`: 新增發射動畫相關 CSS（muzzle-flash／bomb-spin／explosion-burst／board-shake 等 keyframes 與樣式），重寫 `performShoot()`。
+    *   `[MODIFIED]` `custom.html`: 新增相同動畫 CSS，重寫 `performShoot()` 為一致的強化版。
+    *   `[MODIFIED]` `dev_history.log`: 於最上方追加本條紀錄。
+
+*   **目前狀態 (Current Status):** 已完成 Completed
+
+## [2026-06-01 19:30:00] - 配合第四關新指令限制（前進僅 1 張）改寫情節內容
+
+*   **使用者提示詞 / 需求 (User Prompt):**
+    > 第四關 指令限制 前進1 後退 3 左轉2 右轉2 重複x3 1，以這指令修改情節內容
+
+*   **實作策略與動機 (Implementation Strategy):**
+    *   第四關限制已調整為 `forward:1, backward:3, left:2, right:2, repeat_2:-1, repeat_3:1, repeat_custom:-1`。
+    *   關鍵性質改變：前進卡只有 1 張，即使用 x3 重複放大也僅能前進 3 格（到 (3,3)），距終點 (3,0) 仍差 3 格；因此「重複」與「倒退」由原本的『二擇一替代』變成『必須組合併用』——須先用 x3 重複把唯一的前進拉成 3 步，再轉 180 度用倒退×3 補完剩餘 3 格。以模擬器驗證此為可行解（前進1、repeat_3:1、左轉2、倒退3，剛好 6 格抵達終點），且僅靠前進無法通關。
+    *   據此改寫第四關 `desc` 與 `story`（concept 知識卡與 dialogue 對話），把敘事重點由「兩種等價解法可任選」調整為「前進資源極度稀缺，必須拆解目標、組合重複與倒退兩種技巧才能達成」，維持「殊途同歸／等價運算」主題與角色延續性，並承接倒退指令的解鎖。
+
+*   **受影響檔案與變更 (Files Affected & Actions):**
+    *   `[MODIFIED]` `levels.js`: 改寫第四關 `desc`、`story.concept`、`story.dialogue` 以符合新限制（前進 1 張、需重複＋倒退組合）。限制數值本身由使用者調整。
+    *   `[MODIFIED]` `dev_history.log`: 於最上方追加本條紀錄。
+
+*   **目前狀態 (Current Status):** 已完成 Completed
+
+## [2026-06-01 19:20:00] - 依地圖代碼改造第四關為「等價替換（重複/倒退）」教學關
+
+*   **使用者提示詞 / 需求 (User Prompt):**
+    > 第四關改為這個地圖資料，著重於當前進不足時，可以使用重複、倒退的方式替換（Base64 地圖代碼）
+
+*   **實作策略與動機 (Implementation Strategy):**
+    *   解碼使用者提供的代碼：7x7、起點 (3,6)、終點 (3,0)（直線向北 6 格）、無障礙；限制 `forward:3, backward:3, left:2, right:2, repeat_2:1, repeat_3:1, repeat_custom:-1`、`showRepeat:true`。本關於此解鎖『倒退卡（⬇️）』（前三關皆停用）。
+    *   原第四關為「鋸齒階梯／模式識別」故事，與新的直線地圖及主題不符，故一併改寫名稱、描述與故事劇本為「殊途同歸：等價運算與善用有限資源」，引導學生理解：前進卡不足時，可①用重複卡放大單張前進的步數，或②將船頭轉 180 度改用倒退達成相同位移。維持與第三關（迴圈）的延續性並承接介紹倒退指令。
+    *   以模擬器驗證三種解法皆可通關：A 重複替換（前進×1 包 x3 + 前進×1 包 x2 + 前進×1 = 6 步）、B 倒退替換（前進×3 → 左轉×2 掉頭 → 倒退×3）、C 巢狀重複（x2(x3(前進)) = 6 步），皆在卡片上限內且精準抵達終點無多餘步數。
+
+*   **受影響檔案與變更 (Files Affected & Actions):**
+    *   `[MODIFIED]` `levels.js`: 重寫第四關地形（7x7、(3,6)→(3,0)、清空障礙）、限制（啟用 backward:3、repeat_2/3 各 1、停用 repeat_custom）、`showRepeat:true`，並改寫 `name/desc/story` 為等價替換主題。
+    *   `[MODIFIED]` `dev_history.log`: 於最上方追加本條紀錄。
+
+*   **目前狀態 (Current Status):** 已完成 Completed
+
+## [2026-06-01 19:12:00] - 調整第三關為 4x4 並使其可用「單一 x3 重複 + 前進」通關
+
+*   **使用者提示詞 / 需求 (User Prompt):**
+    > 第三關改4x4尺寸，讓我只需要使用一個重複三次與前進就可以過關
+
+*   **實作策略與動機 (Implementation Strategy):**
+    *   第三關已調整為 4x4、起點 (1,3)、終點 (1,0)（直線向北 3 格），且 y=2 整排的舊障礙牆已清空（`obstacles: []`），直線路徑暢通：以一張 x3 重複卡包裹一張前進卡，即可前進 3 格自 (1,3) 抵達終點 (1,0)。
+    *   將 `repeat_2` 由 1 改為停用 (-1)，使本關解法乾淨地只保留「x3 重複 + 前進」，貼合需求「只需要使用一個重複三次與前進」；保留 `forward:1`、`repeat_3:1`、`showRepeat:true` 與迴圈教學故事劇本。
+    *   以模擬器驗證：x3 重複包前進，自 (1,3) 向北前進 3 格恰好抵達 (1,0)，無多餘步數，且在卡片上限內。
+
+*   **受影響檔案與變更 (Files Affected & Actions):**
+    *   `[MODIFIED]` `levels.js`: 第三關確認 `obstacles` 為空，`limits.repeat_2` 由 1 改為 -1。
+    *   `[MODIFIED]` `dev_history.log`: 於最上方追加本條紀錄。
+
+*   **目前狀態 (Current Status):** 已完成 Completed
+
+## [2026-06-01 19:05:00] - 依使用者提供之地圖代碼更新第七關地形與指令限制
+
+*   **使用者提示詞 / 需求 (User Prompt):**
+    > 第七關的地圖地形與指令限制改使用這個：（Base64 地圖代碼）
+
+*   **實作策略與動機 (Implementation Strategy):**
+    *   將使用者提供的 Base64 代碼解碼，得到第七關新設定：9x9、起點 (4,8)、終點 (4,0)、浮木於 (4,4)，限制 `forward:5, left:-1, right:-1, shoot:1, repeat_2:2, repeat_3:1, repeat_custom:-1`、`showRepeat:true`。
+    *   地形（尺寸、起終點、浮木位置）與原第七關相同，實際變更為「指令限制」：停用左右轉、射擊上限由無限改為 1 發、改為啟用重複卡（x2 兩張、x3 一張），並開啟重複區塊顯示。保留原關卡名稱「第七關：魚叉除錯」、描述與「主動除錯」故事劇本（射擊清除浮木的敘事與新限制相符）。
+    *   以手算驗證新設定可通關：直線需前進 8 步（(4,8)→(4,5) 3 步、射擊清除 (4,4)、(4,5)→(4,0) 5 步），用 4 張前進卡搭配 x3×1、x2×2 重複卡放大步數即可完成，皆在上限內。
+
+*   **受影響檔案與變更 (Files Affected & Actions):**
+    *   `[MODIFIED]` `levels.js`: 更新第七關 `limits`（left/right 改 -1、shoot 改 1、repeat_2 改 2、repeat_3 改 1）與 `showRepeat` 改 true。
+    *   `[MODIFIED]` `dev_history.log`: 於最上方追加本條紀錄。
+
+*   **目前狀態 (Current Status):** 已完成 Completed
+
+## [2026-06-01 18:58:00] - [Self-Correction / Bugfix] 修正第六關轉彎卡上限不足致無法通關
+
+*   **使用者提示詞 / 需求 (User Prompt):**
+    > 第六關指令的數量無法過關
+
+*   **實作策略與動機 (Implementation Strategy):**
+    *   以 BFS 模擬器（依遊戲移動模型：dir0=北/1=東/2=南/3=西；左轉 (dir+3)%4、右轉 (dir+1)%4）對第六關求解，確認自起點 (4,8) → 取金鑰 (0,4) → 終點 (8,4) 且需繞過 (3,4)(4,4)(5,4)(6,4) 牆面的最短解，至少需要 **1 次左轉 + 3 次右轉**。
+    *   原關卡限制 `left:2, right:2`，在「左≤2 且 右≤2」條件下經窮舉證明【無解】，玩家無論如何排列指令都無法通關。
+    *   修正：將 `right` 上限由 2 放寬為 3（滿足必要的 3 次右轉）；並將 `forward` 由 6 放寬為 8，給予不同路線少許餘裕。因實際路徑共需 18 步遠多於前進卡數，重複卡（`repeat_custom` 無限、`showRepeat:true`）仍為通關的必要工具，維持本關整合「重複 + 金鑰條件」的設計意圖。`left` 維持 2（最短解僅需 1 次左轉）。
+    *   已用模擬器驗證 `left:2, right:3, forward:8` 下確實可解（前進段數 5、總前進 18 步）。
+
+*   **受影響檔案與變更 (Files Affected & Actions):**
+    *   `[MODIFIED]` `levels.js`: 第六關 `limits.right` 由 2 調整為 3、`limits.forward` 由 6 調整為 8。
+    *   `[MODIFIED]` `dev_history.log`: 於最上方追加本條修正紀錄。
+
+*   **目前狀態 (Current Status):** 已完成 Completed
+
+## [2026-06-01 18:52:00] - [Self-Correction / Bugfix] 修正第五關傳送門失效與前進卡不足致無法通關
+
+*   **使用者提示詞 / 需求 (User Prompt):**
+    > 第五關前進指令太少或是缺少重複
+
+*   **實作策略與動機 (Implementation Strategy):**
+    *   問題一（傳送門失效）：`levels.js` 第五關的傳送門採「色彩配對」格式（`{x,y,color:"purple"}`，無 `targetX/targetY`），但 `adventure.html` 的 `runProgram()` 傳送邏輯仍沿用舊的 `p.targetX/p.targetY`，導致船隻踏入傳送門後座標被設為 `undefined`。改為比照 `custom.html` 的正確寫法：尋找「相同顏色但不同座標」的另一個傳送門作為目的地。
+    *   問題二（前進卡不足）：第五關為直線路徑，起點 (4,8) → 紫色傳送門 (4,6) 需 2 張前進卡，傳送至 (4,2) 後 → 終點 (4,0) 再需 2 張，合計需 4 張前進卡，但原 `limits.forward` 僅為 2。因第五關教學主題為「傳送門＝函式呼叫」並刻意停用重複（`showRepeat:false`），故維持停用重複，改將 `forward` 上限提高至 4。
+
+*   **受影響檔案與變更 (Files Affected & Actions):**
+    *   `[MODIFIED]` `adventure.html`: 重構 `runProgram()` 傳送門邏輯，由 `targetX/targetY` 改為依 `color` 配對尋找目的傳送門。
+    *   `[MODIFIED]` `levels.js`: 第五關 `limits.forward` 由 2 調整為 4。
+    *   `[MODIFIED]` `dev_history.log`: 於最上方追加本條修正紀錄。
+
+*   **目前狀態 (Current Status):** 已完成 Completed
+
+## [2026-06-01 18:37:00] - 實作闖關模式故事劇情與運算思維引導功能
+
+*   **使用者提示詞 / 需求 (User Prompt):**
+    > 另外，我希望讓整個網站的闖關模式更有故事性，在闖關之前增加故事敘事情節內容，在闖關的過程中，每個關卡都要賦予故事，每關之間的故事性必須有延續性，並且引導學生理解程式語言的基本性質與本網站的功能
+
+*   **實作策略與動機 (Implementation Strategy):**
+    *   在 `levels.js` 中新增共 9 個漸進式關卡，尺寸由 5x5 至 9x9 不等，各關對應一個程式設計概念（如順序執行、迴圈、函式、條件判斷、除錯等）。
+    *   在 `levels.js` 的關卡資料中嵌入故事劇本（包含前導前言、小船長「小傑」與鸚鵡導航「羅盤」的對話內容、以及運算思維知識卡）。
+    *   在 `adventure.html` 中實作一個高度美觀、現代感的磨砂玻璃風格（glassmorphism）故事對話視窗（`#story-modal`）。
+    *   整合關卡載入機制，切換關卡時自動開啟故事，且首次進入第一關前會先展示故事前導。
+    *   在關卡標題旁新增「📖 劇情」回顧按鈕，供隨時重新閱讀該關劇情。
+    *   同步調整 `teacher.html` 對應新關卡的計分列與計分機制。
+    *   【本次補完】為第九關（最終關）的 `story` 新增 `epilogue` 終章結局文本，呼應第一關的開場前導，將整段冒險收束於抵達「運算神殿」並回顧九個運算思維概念，完成故事弧線與關卡間的延續性。
+    *   【本次補完】在 `adventure.html` 新增 `.epilogue-box` 金色終章樣式與 `#story-epilogue-container` 容器，並新增 `openEpilogueModal(onDone)` 函式；最終通關時先播放終章結局劇情，玩家閱讀完畢後再接續顯示「傳奇航海家」慶祝視窗。同時於 `openStoryModal()` 加入狀態重置（隱藏結局、復原頁尾按鈕文字與行為），避免一般關卡劇情與終章互相干擾。
+
+*   **受影響檔案與變更 (Files Affected & Actions):**
+    *   `[MODIFIED]` `levels.js`: 重構擴充為 9 個帶有故事劇本與運算思維提示的關卡，並為最終關新增 `epilogue` 終章結局。
+    *   `[MODIFIED]` `adventure.html`: 新增故事 UI 樣式、新增對話 Modal 元件、新設劇情回顧按鈕、重構載入事件觸發故事彈出；新增終章結局樣式、容器與 `openEpilogueModal()`，並於最終通關流程串接結局劇情。
+    *   `[MODIFIED]` `teacher.html`: 同步維持動態讀取 9 個關卡。
+    *   `[MODIFIED]` `dev_history.log`: 於最上方追加本條紀錄。
+
+*   **目前狀態 (Current Status):** 已完成 Completed
+
+## [2026-06-01 18:11:00] - 重構關卡系統並替換全新第一關
+
+*   **使用者提示詞 / 需求 (User Prompt):**
+    > 幫我移除所有的關卡，重新新增，這是新的第一關：
+    > eyJzaXplIjo1LCJzdGFydFBvcyI6eyJ4IjoyLCJ5Ijo0fSwiZW5kUG9zIjp7IngiOjIsInkiOjB9LCJvYnN0YWNsZXMiOltdLCJkcmlmdHdvb2RzIjpbXSwidHJhc2hJc2xhbmRzIjpbXSwic2hhcmtzIjpbXSwicG9ydGFscyI6W10sImtleVBvcyI6bnVsbCwibGltaXRzIjp7ImZvcndhcmQiOjAsImJhY2t3YXJkIjotMSwibGVmdCI6LTEsInJpZ2h0IjotMSwic2hvb3QiOi0xLCJ3YWl0IjotMSwicmVwZWF0XzIiOi0xLCJyZXBlYXRfMyI6LTEsInJlcGVhdF9jdXN0b20iOi0xfSwic2hvd1JlcGVhdCI6ZmFsc2UsIm5hbWUiOiLnrKzkuIDpl5wiLCJkZXNjIjoi6ZaL6Ii55Yid6auU6amX77yM5Yip55So5YmN6YCy5oyH5Luk77yM6Kmm6JGX6K6T6Ii56ZaL5Yiw5a+26JeP55qE5L2N572uIn0=
+
+*   **實作策略與動機 (Implementation Strategy):**
+    *   將關卡定義從 `adventure.html` 中抽離至獨立的 `levels.js` 設定檔中，以促進程式碼解耦並便於未來維護與擴展。
+    *   在 `levels.js` 中新增由 Base64 解碼而來的新第一關（5x5 網格大小）。
+    *   修改 `adventure.html` 與 `teacher.html` 載入 `levels.js`。
+    *   重構 `adventure.html` 的網格大小（`GRID_SIZE`）改為動態變數，並動態配置 `grid-template-columns` 樣式。
+    *   動態渲染 `adventure.html` 的關卡導航按鈕，取代原有 hardcoded 9 個按鈕。
+    *   更新 `teacher.html` 關卡統計數 `TOTAL_LEVELS` 與表格 columns，以動態對應關卡列表長度。
+
+*   **受影響檔案與變更 (Files Affected & Actions):**
+    *   `[CREATED]` `levels.js`: 新增關卡共用設定檔，存放解碼後的第一關資料。
+    *   `[MODIFIED]` `adventure.html`: 載入 `levels.js`，將 `GRID_SIZE` 改為動態，改為動態渲染關卡按鈕，動態調整 levelPrograms 陣列。
+    *   `[MODIFIED]` `teacher.html`: 載入 `levels.js`，使表格 Header 及 Colspan 可動態依關卡數量呈現。
+    *   `[MODIFIED]` `dev_history.log`: 於最上方追加本條紀錄。
+
+*   **目前狀態 (Current Status):** 已完成 Completed
+
 ## [2026-05-27 11:01:00] - 停用闖關模式第 1 至 8 關的等待指令
 
 *   **使用者提示詞 / 需求 (User Prompt):**

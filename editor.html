@@ -113,6 +113,7 @@
             </div>
             <div class="flex gap-3">
                 <a href="index.html" class="px-6 py-2 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition">返回遊戲</a>
+                <button onclick="importMapPrompt()" class="px-6 py-2 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200 transition">📥 匯入地圖</button>
                 <button onclick="exportMap()" class="px-6 py-2 bg-sky-600 text-white rounded-xl font-bold hover:bg-sky-700 shadow-lg shadow-sky-200 transition">匯出地圖</button>
                 <button onclick="launchCustomGame()" class="px-6 py-2 bg-amber-500 text-white rounded-xl font-bold hover:bg-amber-600 shadow-lg shadow-amber-200 transition">🚀 開始測試</button>
             </div>
@@ -785,6 +786,10 @@
                     if (data && data.size) {
                         mapData = data;
                         // 確保相容性
+                        if (!mapData.obstacles) mapData.obstacles = [];
+                        if (!mapData.driftwoods) mapData.driftwoods = [];
+                        if (!mapData.portals) mapData.portals = [];
+                        if (mapData.keyPos === undefined) mapData.keyPos = null;
                         if (!mapData.trashIslands) mapData.trashIslands = [];
                         if (!mapData.sharks) mapData.sharks = [];
                         if (!mapData.limits) {
@@ -832,14 +837,60 @@
             }
         }
 
+        // 草稿鍵：保存編輯器當前未存檔的編輯狀態，供測試後返回時還原
+        const DRAFT_KEY = 'pirate_editor_draft';
+
+        function saveDraft() {
+            try {
+                mapData.size = gridSize;
+                const nameEl = document.getElementById('map-name-input');
+                const descEl = document.getElementById('map-desc-input');
+                if (nameEl) mapData.name = nameEl.value.trim();
+                if (descEl) mapData.desc = descEl.value.trim();
+                localStorage.setItem(DRAFT_KEY, JSON.stringify(mapData));
+            } catch (e) { /* localStorage 不可用時忽略 */ }
+        }
+
+        function restoreDraft() {
+            try {
+                const raw = localStorage.getItem(DRAFT_KEY);
+                if (!raw) return;
+                const data = JSON.parse(raw);
+                if (!data || !data.startPos) return;
+                mapData = data;
+                // 相容性補齊
+                if (!mapData.obstacles) mapData.obstacles = [];
+                if (!mapData.driftwoods) mapData.driftwoods = [];
+                if (!mapData.trashIslands) mapData.trashIslands = [];
+                if (!mapData.sharks) mapData.sharks = [];
+                if (!mapData.portals) mapData.portals = [];
+                if (!mapData.limits) {
+                    mapData.limits = { forward: 0, backward: 0, left: 0, right: 0, shoot: 0, wait: 0, repeat_2: 0, repeat_3: 0, repeat_custom: 0 };
+                } else if (mapData.limits.wait === undefined) {
+                    mapData.limits.wait = 0;
+                }
+                if (mapData.showRepeat === undefined) mapData.showRepeat = true;
+                // 還原尺寸與名稱/說明 UI
+                gridSize = mapData.size || 9;
+                document.getElementById('map-name-input').value = mapData.name || '';
+                document.getElementById('map-desc-input').value = mapData.desc || '';
+                document.getElementById('size-slider').value = gridSize;
+                document.getElementById('size-val').innerText = `${gridSize} x ${gridSize}`;
+            } catch (e) { console.error('還原編輯草稿失敗:', e); }
+        }
+
         function launchCustomGame() {
             if (!mapData.startPos || !mapData.endPos) {
                 alert('⚠️ 警告：地圖上缺少起點（🚩）或終點（💰）！\n\n請在編輯器中先設定起點與終點，然後再開始測試。');
                 return;
             }
-            mapData.name = document.getElementById('map-name-input').value.trim() || '自訂關卡';
-            mapData.desc = document.getElementById('map-desc-input').value.trim() || '這是一個自訂的地圖。';
-            localStorage.setItem('pirate_custom_map', JSON.stringify(mapData));
+            // 先保存草稿，測試結束返回編輯器時可自動還原當前編輯內容
+            saveDraft();
+            // 以深拷貝套用測試用預設名稱/說明，避免污染草稿
+            const testMap = JSON.parse(JSON.stringify(mapData));
+            testMap.name = document.getElementById('map-name-input').value.trim() || '自訂關卡';
+            testMap.desc = document.getElementById('map-desc-input').value.trim() || '這是一個自訂的地圖。';
+            localStorage.setItem('pirate_custom_map', JSON.stringify(testMap));
             window.location.href = 'custom.html';
         }
 
@@ -854,9 +905,13 @@
         }
 
         window.onload = () => {
+            restoreDraft();
             initEditor();
             renderSavedMaps();
         };
+
+        // 離開編輯器（含開始測試、返回首頁等）前保存草稿，兜底防止未存檔編輯遺失
+        window.addEventListener('beforeunload', saveDraft);
 
         function saveMap() {
             if (!mapData.startPos || !mapData.endPos) {

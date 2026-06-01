@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>教師評分管理 - 找到寶藏吧！</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="levels.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap');
         body { font-family: 'Noto Sans TC', Arial, sans-serif; }
@@ -124,7 +125,7 @@
             <div class="overflow-x-auto">
                 <table class="w-full text-sm print-table">
                     <thead class="bg-slate-900/60 text-slate-400 text-xs uppercase tracking-wider">
-                        <tr>
+                        <tr id="header-row">
                             <th class="px-4 py-3 text-left">班級</th>
                             <th class="px-4 py-3 text-left">座號</th>
                             <th class="px-4 py-3 text-center">通關數</th>
@@ -142,7 +143,7 @@
                     </thead>
                     <tbody id="student-tbody">
                         <tr id="empty-row">
-                            <td colspan="13" class="text-center py-20 text-slate-500">
+                            <td colspan="13" id="empty-td" class="text-center py-20 text-slate-500">
                                 <div class="text-5xl mb-3">📭</div>
                                 <div class="text-base">尚未匯入任何學生紀錄</div>
                                 <div class="text-xs mt-1">在上方貼上進度代碼後點擊「解析並匯入」</div>
@@ -221,7 +222,7 @@ function countBlocks(prog) {
 // ========== 學生紀錄 ==========
 let studentRecords = [];  // [{ key, cls, seat, unlockedLevel, gameCleared, levelPrograms, rawCode }]
 
-const TOTAL_LEVELS = 9;
+const TOTAL_LEVELS = window.gameLevels ? window.gameLevels.length : 9;
 
 function loadRecords() {
     try {
@@ -300,7 +301,7 @@ function setFeedback(msg, cls) {
 }
 
 // ========== 表格渲染 ==========
-const LEVEL_NAMES = ['一','二','三','四','五','六','七','八','九'];
+const LEVEL_NAMES = ['一','二','三','四','五','六','七','八','九','十','十一','十二','十三','十四','十五','十六','十七','十八','十九','二十'];
 
 function getClearedCount(rec) {
     return rec.levelPrograms.filter(p => p && p.length > 0).length;
@@ -326,7 +327,7 @@ function renderTable() {
     });
 
     if (records.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="13" class="text-center py-20 text-slate-500">
+        tbody.innerHTML = `<tr><td colspan="${4 + TOTAL_LEVELS}" class="text-center py-20 text-slate-500">
             <div class="text-5xl mb-3">📭</div>
             <div>${filterCls ? '找不到符合班級的學生' : '尚未匯入任何學生紀錄'}</div>
         </td></tr>`;
@@ -402,7 +403,10 @@ function updateStats() {
 
 // ========== 匯出 CSV ==========
 function exportCSV() {
-    const header = ['班級','座號','通關數','全部通關','第一關(塊)','第二關(塊)','第三關(塊)','第四關(塊)','第五關(塊)','第六關(塊)','第七關(塊)','第八關(塊)','第九關(塊)'];
+    const header = ['班級','座號','通關數','全部通關'];
+    for (let i = 0; i < TOTAL_LEVELS; i++) {
+        header.push(`第${LEVEL_NAMES[i] || (i + 1)}關(塊)`);
+    }
     const rows = studentRecords.map(r => {
         const cleared = getClearedCount(r);
         const levelData = r.levelPrograms.map(p => p ? p.length : '');
@@ -420,7 +424,33 @@ function exportCSV() {
 }
 
 // ========== 初始化 ==========
+function initTableHeaders() {
+    const headerRow = document.getElementById('header-row');
+    if (headerRow) {
+        headerRow.innerHTML = `
+            <th class="px-4 py-3 text-left">班級</th>
+            <th class="px-4 py-3 text-left">座號</th>
+            <th class="px-4 py-3 text-center">通關數</th>
+        `;
+        for (let i = 0; i < TOTAL_LEVELS; i++) {
+            const th = document.createElement('th');
+            th.className = 'px-4 py-3 text-center level-cell';
+            th.innerText = `第${LEVEL_NAMES[i] || (i + 1)}關`;
+            headerRow.appendChild(th);
+        }
+        const thOp = document.createElement('th');
+        thOp.className = 'px-4 py-3 text-center no-print';
+        thOp.innerText = '操作';
+        headerRow.appendChild(thOp);
+    }
+    const emptyTd = document.getElementById('empty-td');
+    if (emptyTd) {
+        emptyTd.colSpan = 4 + TOTAL_LEVELS;
+    }
+}
+
 function initDashboard() {
+    initTableHeaders();
     const now = new Date();
     document.getElementById('today-label').innerText =
         `${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()} 今日密碼：code${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
